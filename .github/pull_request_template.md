@@ -11,8 +11,8 @@
 <!-- Comandos ejecutados y qué se verificó manualmente. No basta con "corrí los tests". -->
 
 ```
-cd Backend  && dotnet test
-cd Frontend && npm test && npm run build
+cd src/     && dotnet test
+cd client/  && npm test && npm run build
 ```
 
 ---
