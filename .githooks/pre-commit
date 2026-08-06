@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# =============================================================================
+# pre-commit — Leccionario e Inspección (cplec)
+#
+# Bloquea:
+#   1. Commits directos sobre main o develop
+#   2. Secretos (cadenas de conexión, claves JWT, contraseñas) en archivos versionados
+#   3. Archivos de configuración local que nunca deben subirse
+#   4. Archivos grandes (> 5 MB)
+#   5. Migraciones SQL sin su rollback
+#
+# Activar:  ./scripts/setup-hooks.sh
+# =============================================================================
+set -uo pipefail
+
+RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'; NC='\033[0m'
+fallo=0
+
+err()  { echo -e "${RED}✘ $*${NC}"; fallo=1; }
+warn() { echo -e "${YEL}⚠ $*${NC}"; }
+ok()   { echo -e "${GRN}✔ $*${NC}"; }
+
+# -----------------------------------------------------------------------------
+# 1. Rama protegida
+# -----------------------------------------------------------------------------
+rama=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$rama" == "main" || "$rama" == "develop" ]]; then
+    err "Commit directo sobre '$rama' — rama protegida."
+    echo "  Los cambios entran por Pull Request desde una rama personal:"
+    echo "    git checkout dv_jb"
+    echo "  Ver docs/08-git-flow.md"
+    exit 1
+fi
+
+# Archivos en staging (solo agregados/copiados/modificados/renombrados)
+archivos=$(git diff --cached --name-only --diff-filter=ACMR)
+[[ -z "$archivos" ]] && exit 0
+
+# -----------------------------------------------------------------------------
+# 2. Archivos que nunca se commitean
+# -----------------------------------------------------------------------------
+while IFS= read -r f; do
+    case "$f" in
+        *appsettings.Development.json|*appsettings.Production.json)
+            err "'$f' contiene credenciales reales. Debe estar en .gitignore." ;;
+        *.env|*.env.local|*.env.production)
+            err "'$f' no se versiona." ;;
+        *seed_legacy_minimo.sql|*backup_sigafi_es*.sql|*dump*.sql)
+            err "'$f' parece un dump con datos personales reales. No se versiona." ;;
+        */keys/*.pem|*.pfx|*.p12|*id_rsa)
+            err "'$f' es material criptográfico. No se versiona." ;;
+    esac
+done <<< "$archivos"
+
+# -----------------------------------------------------------------------------
+# 3. Secretos en el contenido
+#    Se revisa el diff en staging, no el árbol de trabajo.
+# -----------------------------------------------------------------------------
+patrones=(
+    'Server=[^;"]*;.*Password=[^;"[:space:]]+'   # cadena de conexión con clave
+    '"Secret"[[:space:]]*:[[:space:]]*"[^"]{16,}"'
+    '"Password"[[:space:]]*:[[:space:]]*"[^"]+"'
+    'password[[:space:]]*=[[:space:]]*["'"'"'][^"'"'"']{6,}'
+    'AKIA[0-9A-Z]{16}'                            # AWS
+    'ghp_[A-Za-z0-9]{36}'                         # GitHub PAT
+    '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+)
+
+while IFS= read -r f; do
+    # Los .example.json y la documentación pueden mostrar plantillas con valores vacíos
+    case "$f" in
+        *example*|docs/*|*.md) continue ;;
+    esac
+    [[ -f "$f" ]] || continue
+
+    contenido=$(git show ":$f" 2>/dev/null) || continue
+    for p in "${patrones[@]}"; do
+        if echo "$contenido" | grep -qEi "$p"; then
+            # Tolerar placeholders evidentes
+            coincidencia=$(echo "$contenido" | grep -Eio "$p" | head -1)
+            if echo "$coincidencia" | grep -qEi '<[^>]+>|xxxx|placeholder|tu[-_]clave|change[-_]?me|\$\{'; then
+                continue
+            fi
+            err "Posible secreto en '$f':"
+            echo "    ${coincidencia:0:70}…"
+            echo "    Si es un falso positivo, mueve el valor a appsettings.Development.json"
+            echo "    o usa un placeholder. Ver docs/05-lineamientos-backend.md"
+        fi
+    done
+done <<< "$archivos"
+
+# -----------------------------------------------------------------------------
+# 4. Archivos grandes
+# -----------------------------------------------------------------------------
+while IFS= read -r f; do
+    [[ -f "$f" ]] || continue
+    bytes=$(wc -c < "$f")
+    if (( bytes > 5242880 )); then
+        err "'$f' pesa $((bytes/1048576)) MB (límite 5 MB)."
+    fi
+done <<< "$archivos"
+
+# -----------------------------------------------------------------------------
+# 5. Migración SQL sin rollback
+# -----------------------------------------------------------------------------
+while IFS= read -r f; do
+    case "$f" in
+        database/migrations/*.sql)
+            base=$(basename "$f" .sql)
+            rb="database/rollback/${base}_rollback.sql"
+            if [[ ! -f "$rb" ]]; then
+                err "La migración '$f' no tiene rollback."
+                echo "    Falta: $rb   (ver database/README.md, regla 2)"
+            fi
+            # MySQL 5.7: rechazar sintaxis de 8.0
+            sql=$(git show ":$f" 2>/dev/null)
+            if echo "$sql" | grep -qEi '^\s*WITH\s+[a-z_]+\s+AS\s*\(|RENAME\s+COLUMN|CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS|OVER\s*\('; then
+                err "'$f' usa sintaxis de MySQL 8.0. Producción es 5.7.21."
+                echo "    Prohibido: CTE (WITH), funciones de ventana, RENAME COLUMN,"
+                echo "               CREATE INDEX IF NOT EXISTS. Ver database/README.md"
+            fi
+            if echo "$sql" | grep -q "0000-00-00"; then
+                err "'$f' usa '0000-00-00'. El sql_mode de producción (NO_ZERO_DATE) lo rechaza."
+            fi ;;
+    esac
+done <<< "$archivos"
+
+# -----------------------------------------------------------------------------
+# 6. Restos de depuración (aviso, no bloqueo)
+# -----------------------------------------------------------------------------
+while IFS= read -r f; do
+    case "$f" in
+        *.cs)
+            git show ":$f" 2>/dev/null | grep -qE '^\s*Console\.WriteLine' \
+                && warn "'$f' tiene Console.WriteLine — usa ILogger." ;;
+        *.ts)
+            git show ":$f" 2>/dev/null | grep -qE '^\s*console\.(log|debug)' \
+                && warn "'$f' tiene console.log." ;;
+    esac
+done <<< "$archivos"
+
+if (( fallo )); then
+    echo ""
+    echo -e "${RED}Commit bloqueado.${NC} Corrige lo anterior y vuelve a intentar."
+    echo "Si estás seguro de que es un falso positivo, discútelo en el PR"
+    echo "en vez de usar --no-verify (ver docs/08-git-flow.md)."
+    exit 1
+fi
+
+ok "pre-commit OK"
+exit 0

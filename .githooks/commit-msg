@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# =============================================================================
+# commit-msg — valida Conventional Commits
+# Ver docs/08-git-flow.md
+# =============================================================================
+set -uo pipefail
+
+RED='\033[0;31m'; GRN='\033[0;32m'; NC='\033[0m'
+
+archivo_msg="$1"
+mensaje=$(head -1 "$archivo_msg")
+
+# Los merges y reverts automáticos no siguen el formato
+if echo "$mensaje" | grep -qE '^(Merge|Revert|fixup!|squash!)'; then
+    exit 0
+fi
+
+patron='^(feat|fix|docs|refactor|test|chore|perf|build|ci|revert|db)(\([a-z0-9-]+\))?!?: .{10,}$'
+
+if ! echo "$mensaje" | grep -qE "$patron"; then
+    echo -e "${RED}✘ Mensaje de commit inválido.${NC}"
+    echo ""
+    echo "  Recibido: $mensaje"
+    echo ""
+    echo "  Formato:  <tipo>(<alcance>): <descripción de al menos 10 caracteres>"
+    echo "  Tipos:    feat fix docs refactor test chore perf build ci revert db"
+    echo "  Alcances: auth asistencia sesiones reportes rbac db frontend backend docs ci"
+    echo ""
+    echo "  Ejemplos:"
+    echo "    feat(asistencia): registrar lista de una sesion de forma idempotente"
+    echo "    fix(auth): validar activo despues de la credencial"
+    echo "    db(rbac): agregar sistema cplec y sus roles"
+    exit 1
+fi
+
+if (( ${#mensaje} > 100 )); then
+    echo -e "${RED}✘ La primera línea tiene ${#mensaje} caracteres (máximo 100).${NC}"
+    echo "  El detalle va en el cuerpo del commit, después de una línea en blanco."
+    exit 1
+fi
+
+echo -e "${GRN}✔ commit-msg OK${NC}"
+exit 0

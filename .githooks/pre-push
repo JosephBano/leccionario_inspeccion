@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# =============================================================================
+# pre-push — Leccionario e Inspección (cplec)
+#
+# Bloquea:
+#   1. Push directo a main o develop
+#   2. Force-push a ramas protegidas
+#   3. Push con tests en rojo (backend y frontend)
+#
+# Saltar las pruebas SOLO en una emergencia justificada:
+#   SKIP_TESTS=1 git push          (y decirlo en el PR)
+#
+# Activar:  ./scripts/setup-hooks.sh
+# =============================================================================
+set -uo pipefail
+
+RED='\033[0;31m'; YEL='\033[1;33m'; GRN='\033[0;32m'; NC='\033[0m'
+raiz=$(git rev-parse --show-toplevel)
+
+err() { echo -e "${RED}✘ $*${NC}"; }
+ok()  { echo -e "${GRN}✔ $*${NC}"; }
+
+# -----------------------------------------------------------------------------
+# 1 y 2. Ramas protegidas — se leen las refs por stdin
+#        formato: <local ref> <local sha> <remote ref> <remote sha>
+# -----------------------------------------------------------------------------
+while read -r ref_local sha_local ref_remoto sha_remoto; do
+    [[ -z "${ref_remoto:-}" ]] && continue
+    rama_remota="${ref_remoto#refs/heads/}"
+
+    if [[ "$rama_remota" == "main" || "$rama_remota" == "develop" ]]; then
+        err "Push directo a '$rama_remota' — rama protegida."
+        echo "  Los cambios entran por Pull Request. Ver docs/08-git-flow.md"
+        exit 1
+    fi
+
+    # Borrado de rama protegida (sha local todo ceros)
+    if [[ "$sha_local" =~ ^0+$ && ( "$rama_remota" == "main" || "$rama_remota" == "develop" ) ]]; then
+        err "Intento de borrar '$rama_remota'."
+        exit 1
+    fi
+done
+
+if [[ "${SKIP_TESTS:-0}" == "1" ]]; then
+    echo -e "${YEL}⚠ SKIP_TESTS=1 — se omiten las pruebas.${NC}"
+    echo -e "${YEL}  Decláralo en la descripción del PR.${NC}"
+    exit 0
+fi
+
+# -----------------------------------------------------------------------------
+# 3. Pruebas
+# -----------------------------------------------------------------------------
+echo "Ejecutando la suite antes del push…"
+
+if [[ -d "$raiz/Backend" ]] && compgen -G "$raiz/Backend/*.sln" > /dev/null; then
+    echo "→ Backend: dotnet test"
+    if ! (cd "$raiz/Backend" && dotnet test --nologo --verbosity quiet); then
+        err "Los tests del backend fallaron. Push cancelado."
+        exit 1
+    fi
+    ok "Backend en verde"
+else
+    echo "  (backend aún no creado — se omite)"
+fi
+
+if [[ -f "$raiz/Frontend/package.json" ]]; then
+    if grep -q '"test"' "$raiz/Frontend/package.json"; then
+        echo "→ Frontend: npm test"
+        if ! (cd "$raiz/Frontend" && npm test --silent); then
+            err "Los tests del frontend fallaron. Push cancelado."
+            exit 1
+        fi
+        ok "Frontend en verde"
+    fi
+else
+    echo "  (frontend aún no creado — se omite)"
+fi
+
+# -----------------------------------------------------------------------------
+# 4. Coherencia de migraciones (por si se saltó el pre-commit)
+# -----------------------------------------------------------------------------
+faltantes=0
+for m in "$raiz"/database/migrations/*.sql; do
+    [[ -e "$m" ]] || continue
+    base=$(basename "$m" .sql)
+    if [[ ! -f "$raiz/database/rollback/${base}_rollback.sql" ]]; then
+        err "La migración '$base.sql' no tiene rollback."
+        faltantes=1
+    fi
+done
+(( faltantes )) && exit 1
+
+ok "pre-push OK"
+exit 0

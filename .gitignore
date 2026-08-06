@@ -1,0 +1,82 @@
+# =============================================================================
+# Leccionario e Inspección — cplec
+# =============================================================================
+
+# --- Secretos y configuración local ------------------------------------------
+# Regla: appsettings.json y appsettings.example.json SÍ se versionan (sin secretos).
+# Todo lo que lleve credenciales reales, NO.
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+appsettings.IntegrationTests.json
+*.env
+.env
+.env.*
+!.env.example
+secrets.json
+
+# Material criptográfico
+*.pem
+*.pfx
+*.p12
+*.key
+!**/keys/README.md
+
+# --- Dumps y datos reales ----------------------------------------------------
+# sigafi_es contiene cédulas y nombres de personas. Ningún dump entra al repo.
+seed_legacy_minimo.sql
+backup_*.sql
+dump_*.sql
+*.sql.gz
+database/local/
+
+# --- .NET --------------------------------------------------------------------
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+*.userprefs
+*.cache
+project.lock.json
+artifacts/
+TestResults/
+coverage/
+*.coverage
+*.coverlet.json
+coverage.cobertura.xml
+efpt.config.json.user
+.vs/
+
+# --- Node / Angular ----------------------------------------------------------
+node_modules/
+dist/
+.angular/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.eslintcache
+.vite/
+
+# --- Editores ----------------------------------------------------------------
+.idea/
+*.swp
+*~
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# --- Sistema operativo -------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Salidas de reportes generados localmente --------------------------------
+Backend/Leccionario.Api/Uploads/
+Backend/Leccionario.Api/Storage/Generated/
+*.xlsx
+*.pdf
+!docs/**/*.pdf

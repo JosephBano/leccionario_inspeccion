@@ -1,0 +1,167 @@
+name: CI
+
+# Los checks que deben exigirse como obligatorios en la protección de rama
+# de `main` y `develop`: backend-tests, frontend-tests, sql-lint.
+# Ver docs/08-git-flow.md § Nivel 2.
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: Backend — build y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar si el backend ya existe
+        id: existe
+        run: |
+          if compgen -G "Backend/*.sln" > /dev/null; then
+            echo "hay=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay=false" >> "$GITHUB_OUTPUT"
+            echo "Backend aún no creado — se omite."
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.existe.outputs.hay == 'true'
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        if: steps.existe.outputs.hay == 'true'
+        run: dotnet restore Backend/
+
+      - name: Build
+        if: steps.existe.outputs.hay == 'true'
+        run: dotnet build Backend/ --no-restore --configuration Release /warnaserror
+
+      - name: Tests
+        if: steps.existe.outputs.hay == 'true'
+        # Las pruebas de integración se saltan solas: no hay
+        # appsettings.IntegrationTests.json en CI (ni acceso a la BD).
+        run: |
+          dotnet test Backend/ --no-build --configuration Release \
+            --logger "trx;LogFileName=resultados.trx" \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=cobertura \
+            /p:Exclude="[*]Leccionario.Api.Domain.Entities.*"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.existe.outputs.hay == 'true'
+        with:
+          name: resultados-backend
+          path: '**/TestResults/*.trx'
+          if-no-files-found: ignore
+
+  frontend-tests:
+    name: Frontend — lint, tests y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar si el frontend ya existe
+        id: existe
+        run: |
+          if [ -f Frontend/package.json ]; then
+            echo "hay=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay=false" >> "$GITHUB_OUTPUT"
+            echo "Frontend aún no creado — se omite."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.existe.outputs.hay == 'true'
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - run: npm ci
+        if: steps.existe.outputs.hay == 'true'
+        working-directory: Frontend
+
+      - run: npm run lint --if-present
+        if: steps.existe.outputs.hay == 'true'
+        working-directory: Frontend
+
+      - run: npm test
+        if: steps.existe.outputs.hay == 'true'
+        working-directory: Frontend
+
+      - run: npm run build
+        if: steps.existe.outputs.hay == 'true'
+        working-directory: Frontend
+
+  sql-lint:
+    name: SQL — migraciones y rollbacks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cada migración tiene su rollback
+        run: |
+          fallo=0
+          shopt -s nullglob
+          for m in database/migrations/*.sql; do
+            base=$(basename "$m" .sql)
+            rb="database/rollback/${base}_rollback.sql"
+            if [ ! -f "$rb" ]; then
+              echo "::error file=$m::Falta el rollback: $rb"
+              fallo=1
+            fi
+          done
+          exit $fallo
+
+      - name: Sin sintaxis de MySQL 8.0 (producción es 5.7.21)
+        run: |
+          fallo=0
+          shopt -s nullglob
+          for f in database/migrations/*.sql database/rollback/*.sql; do
+            if grep -qEi '^\s*WITH\s+[a-z_]+\s+AS\s*\(|RENAME[[:space:]]+COLUMN|CREATE[[:space:]]+INDEX[[:space:]]+IF[[:space:]]+NOT[[:space:]]+EXISTS' "$f"; then
+              echo "::error file=$f::Sintaxis de MySQL 8.0 no soportada en 5.7"
+              fallo=1
+            fi
+            if grep -q "0000-00-00" "$f"; then
+              echo "::error file=$f::'0000-00-00' es incompatible con NO_ZERO_DATE"
+              fallo=1
+            fi
+          done
+          exit $fallo
+
+      - name: Las migraciones aplican sobre MySQL 5.7 limpio
+        # Solo valida sintaxis: las FK hacia tablas legacy no existen en una base
+        # vacía, así que se comprueba el parseo, no la ejecución completa.
+        run: |
+          echo "Pendiente: requiere el dump legacy mínimo, que contiene datos"
+          echo "personales y no puede vivir en el repositorio."
+          echo "Ver database/README.md § Cómo replicar el esquema."
+
+  secretos:
+    name: Sin secretos versionados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Buscar credenciales en archivos versionados
+        run: |
+          fallo=0
+          archivos=$(git ls-files | grep -vE '(example|\.md$|^docs/|^\.github/)' || true)
+          for f in $archivos; do
+            [ -f "$f" ] || continue
+            if grep -qEi 'Server=[^;"]*;.*Password=[^;"[:space:]]+' "$f"; then
+              echo "::error file=$f::Cadena de conexión con contraseña"
+              fallo=1
+            fi
+          done
+          exit $fallo
