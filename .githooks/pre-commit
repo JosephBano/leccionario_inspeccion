@@ -67,17 +67,21 @@ patrones=(
 )
 
 while IFS= read -r f; do
-    # Los .example.json y la documentación pueden mostrar plantillas con valores vacíos
+    # Exclusiones:
+    #   *example*, docs/, *.md → plantillas y documentación con valores vacíos
+    #   .githooks/, .github/   → contienen los patrones de detección por definición
     case "$f" in
-        *example*|docs/*|*.md) continue ;;
+        *example*|docs/*|*.md|.githooks/*|.github/*) continue ;;
     esac
     [[ -f "$f" ]] || continue
 
     contenido=$(git show ":$f" 2>/dev/null) || continue
     for p in "${patrones[@]}"; do
-        if echo "$contenido" | grep -qEi "$p"; then
+        # `--` es necesario: hay patrones que empiezan con '-' y grep los tomaría
+        # como opciones (p. ej. el de BEGIN PRIVATE KEY).
+        if echo "$contenido" | grep -qEi -- "$p"; then
             # Tolerar placeholders evidentes
-            coincidencia=$(echo "$contenido" | grep -Eio "$p" | head -1)
+            coincidencia=$(echo "$contenido" | grep -Eio -- "$p" | head -1)
             if echo "$coincidencia" | grep -qEi '<[^>]+>|xxxx|placeholder|tu[-_]clave|change[-_]?me|\$\{'; then
                 continue
             fi
