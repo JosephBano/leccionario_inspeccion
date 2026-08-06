@@ -6,9 +6,14 @@ existe en producción.
 ```
 database/
 ├── migrations/   Cambios de esquema, numerados y ordenados. Se aplican en orden.
+│   └── README.md ← PASO A PASO para ejecutarlos y usar el rollback
 ├── rollback/     Un archivo por migración, mismo número. Deshace el cambio.
 └── queries/      Consultas operativas y de verificación. No modifican el esquema.
 ```
+
+> **¿Vas a correr un `.sql`?** Empezá por
+> [`migrations/README.md`](migrations/README.md): tiene el procedimiento completo,
+> tres métodos de ejecución, la verificación esperada y cómo usar los rollbacks.
 
 ---
 
@@ -42,15 +47,26 @@ database/
 
 | # | Script | Qué hace | Aplicado en dev | Aplicado en prod |
 |---|---|---|---|---|
-| 001 | `001_cplec_rbac_seed.sql` | Registra el sistema `cplec`, 3 módulos, grants y los roles `cplec_inspector` / `cplec_docente` | ☐ | ☐ |
-| 002 | `002_cplec_sesiones.sql` | Tabla `cplec_sesiones` (sesión de clase) | ☐ | ☐ |
-| 003 | `003_cplec_asistencias.sql` | Tablas `cplec_asistencias` y `cplec_asistencias_historial` | ☐ | ☐ |
+| 001 | `001_cplec_rbac_seed.sql` | Registra el sistema `cplec`, 3 módulos, grants y los roles `cplec_inspector` / `cplec_docente` | ✅ 2026-08-06 | ☐ |
+| 002 | `002_cplec_sesiones.sql` | Tabla `cplec_sesiones` (sesión de clase) | ✅ 2026-08-06 | ☐ |
+| 003 | `003_cplec_asistencias.sql` | Tablas `cplec_asistencias` y `cplec_asistencias_historial` | ✅ 2026-08-06 | ☐ |
 
 > Mantener esta tabla al día es parte del PR que agrega la migración.
+
+Detalle de la primera aplicación (deltas medidos y pruebas de constraints) en
+[`migrations/README.md`](migrations/README.md) § Registro de la primera aplicación.
+
+**Pendiente antes de usar el sistema:** asignar los roles `cplec_docente` y
+`cplec_inspector` a personas reales con
+[`queries/asignar-roles-cplec.sql`](queries/asignar-roles-cplec.sql). La migración 001
+crea los roles pero **no** se los da a nadie.
 
 ---
 
 ## Cómo aplicar
+
+Resumen. El procedimiento completo está en
+[`migrations/README.md`](migrations/README.md).
 
 ```bash
 # 1. Backup SIEMPRE (producción y desarrollo)

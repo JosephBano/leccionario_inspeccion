@@ -90,6 +90,14 @@ estado `activo` se valida **después** de la credencial, y por qué el mensaje d
 
 ## Estado actual
 
-Documentación, gobernanza de git y scripts SQL: listos.
-Backend y frontend: **sin scaffoldear todavía**. Lo siguiente es el login
-(`docs/03`) y la pantalla de pasar lista (`docs/06`).
+- Documentación, gobernanza de git y scripts SQL: listos.
+- **Migraciones 001–003 aplicadas en desarrollo** (2026-08-06). Las tablas
+  `cplec_sesiones`, `cplec_asistencias` y `cplec_asistencias_historial` existen y
+  están vacías. El sistema `cplec` y los dos roles están en el RBAC.
+- **Falta asignar los roles a personas** —
+  `database/queries/asignar-roles-cplec.sql`. Sin eso nadie puede entrar.
+- Producción: sin aplicar.
+- Backend y frontend: **sin scaffoldear todavía**. Lo siguiente es el login
+  (`docs/03`) y la pantalla de pasar lista (`docs/06`).
+
+Para correr o revertir un `.sql`: `database/migrations/README.md`.

@@ -44,6 +44,7 @@ leccionario_inspeccion/
 ├── Frontend/                       # Angular 21 (core / features / shared / layout)
 ├── database/
 │   ├── migrations/                 # DDL versionado, replicable en producción (MySQL 5.7)
+│   │   └── README.md               #   ↳ paso a paso para ejecutar y hacer rollback
 │   ├── rollback/                   # Un rollback por cada migración
 │   └── queries/                    # Consultas de verificación/diagnóstico
 ├── docs/                           # Documentación y lineamientos (leer antes de codear)
