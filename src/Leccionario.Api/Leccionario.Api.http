@@ -1,0 +1,6 @@
+@Leccionario.Api_HostAddress = http://localhost:5019
+
+GET {{Leccionario.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
