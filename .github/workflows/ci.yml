@@ -24,7 +24,7 @@ jobs:
       - name: Verificar si el backend ya existe
         id: existe
         run: |
-          if compgen -G "Backend/*.sln" > /dev/null; then
+          if compgen -G "src/*.sln" > /dev/null; then
             echo "hay=true" >> "$GITHUB_OUTPUT"
           else
             echo "hay=false" >> "$GITHUB_OUTPUT"
@@ -38,18 +38,18 @@ jobs:
 
       - name: Restore
         if: steps.existe.outputs.hay == 'true'
-        run: dotnet restore Backend/
+        run: dotnet restore src/
 
       - name: Build
         if: steps.existe.outputs.hay == 'true'
-        run: dotnet build Backend/ --no-restore --configuration Release /warnaserror
+        run: dotnet build src/ --no-restore --configuration Release /warnaserror
 
       - name: Tests
         if: steps.existe.outputs.hay == 'true'
         # Las pruebas de integración se saltan solas: no hay
         # appsettings.IntegrationTests.json en CI (ni acceso a la BD).
         run: |
-          dotnet test Backend/ --no-build --configuration Release \
+          dotnet test src/ --no-build --configuration Release \
             --logger "trx;LogFileName=resultados.trx" \
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=cobertura \
@@ -71,7 +71,7 @@ jobs:
       - name: Verificar si el frontend ya existe
         id: existe
         run: |
-          if [ -f Frontend/package.json ]; then
+          if [ -f client/package.json ]; then
             echo "hay=true" >> "$GITHUB_OUTPUT"
           else
             echo "hay=false" >> "$GITHUB_OUTPUT"
@@ -83,23 +83,23 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: Frontend/package-lock.json
+          cache-dependency-path: client/package-lock.json
 
       - run: npm ci
         if: steps.existe.outputs.hay == 'true'
-        working-directory: Frontend
+        working-directory: client
 
       - run: npm run lint --if-present
         if: steps.existe.outputs.hay == 'true'
-        working-directory: Frontend
+        working-directory: client
 
       - run: npm test
         if: steps.existe.outputs.hay == 'true'
-        working-directory: Frontend
+        working-directory: client
 
       - run: npm run build
         if: steps.existe.outputs.hay == 'true'
-        working-directory: Frontend
+        working-directory: client
 
   sql-lint:
     name: SQL — migraciones y rollbacks

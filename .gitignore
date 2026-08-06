@@ -75,8 +75,10 @@ Thumbs.db
 desktop.ini
 
 # --- Salidas de reportes generados localmente --------------------------------
-Backend/Leccionario.Api/Uploads/
-Backend/Leccionario.Api/Storage/Generated/
+src/Leccionario.Api/Uploads/
+src/Leccionario.Api/Storage/Generated/
+client/dist/
+client/.angular/
 *.xlsx
 *.pdf
 !docs/**/*.pdf
