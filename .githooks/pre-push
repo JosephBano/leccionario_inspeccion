@@ -52,9 +52,9 @@ fi
 # -----------------------------------------------------------------------------
 echo "Ejecutando la suite antes del push…"
 
-if [[ -d "$raiz/Backend" ]] && compgen -G "$raiz/Backend/*.sln" > /dev/null; then
+if [[ -d "$raiz/src" ]] && compgen -G "$raiz/src/*.sln" > /dev/null; then
     echo "→ Backend: dotnet test"
-    if ! (cd "$raiz/Backend" && dotnet test --nologo --verbosity quiet); then
+    if ! (cd "$raiz/src" && dotnet test --nologo --verbosity quiet); then
         err "Los tests del backend fallaron. Push cancelado."
         exit 1
     fi
@@ -63,10 +63,10 @@ else
     echo "  (backend aún no creado — se omite)"
 fi
 
-if [[ -f "$raiz/Frontend/package.json" ]]; then
-    if grep -q '"test"' "$raiz/Frontend/package.json"; then
+if [[ -f "$raiz/client/package.json" ]]; then
+    if grep -q '"test"' "$raiz/client/package.json"; then
         echo "→ Frontend: npm test"
-        if ! (cd "$raiz/Frontend" && npm test --silent); then
+        if ! (cd "$raiz/client" && npm test --silent); then
             err "Los tests del frontend fallaron. Push cancelado."
             exit 1
         fi
