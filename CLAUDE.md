@@ -49,16 +49,27 @@ Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) § 5.
 
 ## Modelo de datos — lo no obvio
 
+- **El eje es `asignaciones_profesores`.** Todo parte de ahí:
+  `idNivel → cursos → carreras (idCarrera = 6)` define el alcance del sistema.
+  Camino completo y verificado en [`docs/10`](docs/10-navegacion-distributivo.md).
 - Un **paralelo** no es una tabla: es la tupla
-  `(idPeriodo, idNivel, idSeccion, idModalidad, paralelo)`.
+  `(idPeriodo, idNivel, idSeccion, idModalidad, paralelo)`. **Las 5 columnas son
+  obligatorias**: con 3 el join devuelve el triple de alumnos (otras jornadas).
+- En la carrera 6, `cursos.nivel` es el **tipo de licencia** (TIPO "C"/"D"/"E") y
+  `secciones.seccion` es la **jornada** (matutina/nocturna/…). No son "niveles".
+- Las sesiones son **por día, no por hora**. Sin FK a `horas_clases`.
+- El rango válido de una sesión sale de `asignaciones_profesores.fecha_inicial ..
+  fecha_fin` (módulos cortos, de 2 a 6 semanas). `periodos.activo` **no** sirve para
+  saber el período vigente: está en 1 en casi todos, incluidos los de 2022.
 - La unidad de asistencia es **`matriculas.idMatricula`**, no `idAlumno`: un alumno
   puede estar matriculado en varios paralelos.
-- La Escuela de Conducción es `carreras.idCarrera = 6`.
 - **`horario_detalle` está vacío para la carrera 6** — por eso existe `cplec_sesiones`.
   Ver [ADR-001](docs/adr/ADR-001-sesion-de-clase-propia.md).
 - `matriculas_asistencias` (legacy, grano día) **no se toca**.
 - `asignaciones_profesores.paralelo` es `char(1)` y `matriculas.paralelo` es
   `varchar(10)`: normalizar con `TRIM()` al comparar desde código.
+- `alumnos` **no** tiene `apellidos`/`nombres` (esas son de `profesores`): usa
+  `apellidoPaterno`, `apellidoMaterno`, `primerNombre`, `segundoNombre`.
 
 ## Comandos
 

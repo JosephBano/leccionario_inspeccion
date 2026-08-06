@@ -51,9 +51,11 @@ Crear **`cplec_sesiones`** y **`cplec_asistencias`**, propias de este sistema.
   `fechas_horarios(idFecha)` — reutiliza el distributivo y el calendario, que sí están
   poblados — pero **el docente crea la sesión en el momento de pasar lista**. No
   requiere planificación previa.
-- `idHora` es opcional (FK a `horas_clases`), para cuando exista un bloque horario real.
-- La unicidad recae en `(idAsignacion, idFecha, numeroBloque)` y no en `idHora`, porque
-  en MySQL un índice `UNIQUE` con `NULL` admite filas duplicadas.
+- **El grano es el día, no la hora.** No hay FK hacia `horas_clases` ni columnas de
+  hora: el módulo de horarios queda fuera de alcance. La unicidad es
+  `(idAsignacion, idFecha, numeroBloque)`, con `numeroBloque` por defecto en 1.
+- El rango válido de fechas sale de `asignaciones_profesores.fecha_inicial .. fecha_fin`,
+  que está poblado y en la carrera 6 son módulos cortos (2 a 6 semanas).
 - `matriculas_asistencias` y `horario_detalle` quedan **intactas**: no se leen ni se
   escriben.
 
@@ -70,9 +72,9 @@ Crear **`cplec_sesiones`** y **`cplec_asistencias`**, propias de este sistema.
 
 - Un tercer modelo de asistencia en la misma base. Se mitiga con el prefijo `cplec_`,
   los comentarios de tabla y este ADR.
-- Si en el futuro la escuela adopta el módulo de horarios, habrá que decidir si
-  `cplec_sesiones` se alimenta de `horario_detalle`. El campo `idHora` ya deja abierta
-  esa puerta.
+- Si en el futuro la escuela adopta planificación (a nivel de día, no de hora), habrá
+  que decidir si `cplec_sesiones` se prellena desde ahí. Sería una migración aditiva:
+  la clave única ya contempla varias sesiones por día.
 - Los reportes institucionales que hoy leen `matriculas_asistencias` no verán estos
   datos. Es intencional en la v1; si se pide consolidar, se hace con una vista.
 

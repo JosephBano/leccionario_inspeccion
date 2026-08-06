@@ -43,6 +43,7 @@ Uniforme para toda la API, generado por `ApiExceptionMiddleware`:
 | 404 | `NO_ENCONTRADO` | El recurso no existe |
 | 409 | `SESION_DUPLICADA` | Ya existe una sesión para esa asignación/fecha/bloque |
 | 422 | `MATRICULA_AJENA` | Un `idMatricula` enviado no pertenece a ese paralelo |
+| 422 | `FUERA_DE_VENTANA` | La fecha cae fuera de `fecha_inicial .. fecha_fin` de la asignación |
 | 429 | `DEMASIADAS_PETICIONES` | Rate limiting |
 | 500 | `ERROR_INTERNO` | Nunca expone el mensaje de la excepción al cliente |
 
@@ -93,22 +94,31 @@ Rol: `cplec_docente`. El `idProfesor` sale del token.
 ```json
 {
   "items": [{
-    "idAsignacion": 18422,
-    "idPeriodo": "SEE2023",
-    "asignatura": "LEGISLACION DE TRANSITO",
-    "paralelo": "A",
-    "idNivel": 61,
-    "nivel": "PRIMER NIVEL",
+    "idAsignacion": 23229,
+    "idPeriodo": "OCC2025",
+    "asignatura": "GEOGRAFÍA DEL ECUADOR",
+    "tipoLicencia": "TIPO \"C\"",
+    "jornada": "NOCTURNA",
     "modalidad": "PRESENCIAL",
-    "totalAlumnos": 28,
+    "paralelo": "C",
+    "fechaInicial": "2025-10-06",
+    "fechaFin": "2025-11-05",
+    "totalAlumnos": 29,
     "sesionesRegistradas": 12,
-    "ultimaSesion": "2026-08-05"
+    "ultimaSesion": "2025-10-28"
   }],
   "total": 4, "page": 1, "pageSize": 50
 }
 ```
 
-Si se omite `idPeriodo` se usa el período activo (`periodos.activo = 1`).
+`tipoLicencia` viene de `cursos.nivel` y `jornada` de `secciones.seccion` — para la
+carrera 6 eso es lo que significan. El cliente muestra la etiqueta, no los IDs.
+
+Si se omite `idPeriodo`, el backend resuelve el período por
+`CURDATE() BETWEEN ap.fecha_inicial AND ap.fecha_fin`. **No** se usa
+`periodos.activo`: casi todos los períodos lo tienen en 1, incluidos los de 2022.
+Si esa consulta no devuelve nada, la respuesta trae `items: []` y
+`periodosDisponibles` con la lista ordenada por `MAX(fecha_fin)` descendente.
 
 ### `GET /api/paralelos/{idAsignacion}/alumnos`
 Roles: `cplec_docente` (solo suyos) · `cplec_inspector` (cualquiera).
@@ -127,20 +137,25 @@ Rol: `cplec_docente`. Crea la clase del día.
 // request
 {
   "fecha": "2026-08-06",
-  "numeroBloque": 1,
-  "idHora": null,
-  "horaInicio": "08:00",
-  "horaFin": "09:30",
-  "tipoBloque": "teorico",
-  "tema": "Señalización vertical y horizontal"
+  "tema": "Señalización vertical y horizontal",
+  "observacion": "Faltó el proyector; se usó pizarra",
+  "numeroBloque": 1
 }
 ```
 
+- `tema` es **obligatorio** (máx. 250). Es el propósito del leccionario.
+- `numeroBloque` es opcional y por defecto `1`. Solo se envía si hay dos clases de la
+  misma asignación el mismo día.
 - `fecha` se traduce internamente a `fechas_horarios.idFecha`. Si el día no existe en el
   calendario → `400 VALIDACION`.
+- **La fecha debe caer dentro de `asignaciones_profesores.fecha_inicial .. fecha_fin`**
+  de esa asignación → si no, `422 FUERA_DE_VENTANA` con el rango válido en `detalles`.
 - `201` con la sesión creada y la nómina precargada en `presente`.
 - Si ya existe esa (`idAsignacion`, `fecha`, `numeroBloque`) → `409 SESION_DUPLICADA`
   con el `idSesion` existente en `detalles`, para que el cliente redirija en vez de fallar.
+
+No hay horas ni bloques horarios: el grano es el día. Ver
+[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md).
 
 ### `GET /api/sesiones/{idSesion}`
 La sesión con su lista completa de asistencia.

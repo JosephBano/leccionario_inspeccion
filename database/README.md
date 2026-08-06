@@ -78,14 +78,14 @@ docker run --rm -i mysql:5.7 mysql -h <host> -P 3307 -u <user> -p<pass> sigafi_e
 ## Cómo replicar el esquema en un entorno limpio
 
 Los `cplec_*` tienen FK hacia tablas legacy (`asignaciones_profesores`,
-`fechas_horarios`, `horas_clases`, `matriculas`). Una base vacía **no** las tiene, así
+`fechas_horarios`, `matriculas`). Una base vacía **no** las tiene, así
 que las migraciones fallarán con error 1215. Para levantar un entorno de pruebas:
 
 ```bash
 # Estructura + datos de las tablas legacy necesarias
 mysqldump -h <host> -P 3307 -u <user> -p sigafi_es \
   usuarios profesores alumnos matriculas asignaciones_profesores \
-  cursos carreras asignaturas periodos fechas_horarios horas_clases modalidades \
+  cursos carreras asignaturas periodos fechas_horarios secciones modalidades \
   rbac_sistema rbac_modulos rbac_operaciones rbac_modulos_operaciones \
   rbac_rol rbac_rol_modulo_operacion rbac_usuario_rol rbac_refresh_tokens \
   > seed_legacy_minimo.sql

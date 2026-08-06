@@ -67,6 +67,7 @@ leccionario_inspeccion/
 | 07 | [Estrategia de pruebas](docs/07-pruebas.md) | Qué se testea, cobertura mínima, TDD |
 | 08 | [Git Flow y protección de ramas](docs/08-git-flow.md) | Ramas, PRs, hooks, CI |
 | 09 | [Base de datos y despliegue](docs/09-base-datos-despliegue.md) | Cómo se escriben y aplican los `.sql` |
+| 10 | [Navegación del distributivo](docs/10-navegacion-distributivo.md) | **El camino de consulta**: de `asignaciones_profesores` a los alumnos |
 | — | [ADRs](docs/adr/) | Decisiones de arquitectura con su justificación |
 
 ---

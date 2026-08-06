@@ -29,8 +29,19 @@ Ninguna de estas se modifica. El leccionario las consulta.
 | `asignaturas` | `idAsignatura` | Nombre de la materia |
 | `periodos` | `idPeriodo` char(7) | Período académico. Flag `esConduccion` (hoy sin usar) |
 | `fechas_horarios` | `idFecha` | **Calendario precargado**, una fila por día hasta 2026-12-31 (`idFecha` 1..3713) |
-| `horas_clases` | `idhora` | Bloques horarios por sección/carrera |
+| `secciones` | `idSeccion` | Jornada: matutina / nocturna / vespertina / fin de semana |
+| `modalidades` | `idModalidad` | Presencial / en línea / híbrida / semipresencial |
 | `rbac_*` (7 tablas) | — | Sistema, módulos, operaciones, roles, asignaciones |
+
+### Qué significan estas tablas en la carrera 6
+
+Los nombres genéricos engañan. Para la Escuela de Conducción:
+
+| Tabla | Significado real | Valores |
+|---|---|---|
+| `cursos.nivel` | **Tipo de licencia** | `TIPO "C"`, `TIPO "D"`, `TIPO "E"`, sus convalidadas y `RECUPERACION PUNTOS` |
+| `secciones.seccion` | **Jornada** | `MATUTINA`, `NOCTURNA`, `VESPERTINA`, `FIN SEMAN` |
+| `modalidades.modalidad` | Modalidad | `PRESENCIAL`, `EN LINEA`, `HIBRIDA`, `SEMIPRESENCIAL` |
 
 ### Cómo se identifica un "paralelo"
 
@@ -57,10 +68,16 @@ WHERE ap.idAsignacion = ?
   AND COALESCE(m.valida,   1) = 1;
 ```
 
-> Ojo con los tipos: `asignaciones_profesores.paralelo` es `char(1)` y
-> `matriculas.paralelo` es `varchar(10)`. MySQL compara bien igualmente (`char` se
-> right-pads y se ignoran los espacios finales en la comparación), pero **no confiar en
-> `ap.paralelo = 'A '`** desde código: normalizar con `TRIM()` en la capa de aplicación.
+**Las 5 columnas son obligatorias.** Medido sobre datos reales: el join completo
+devuelve 29–30 alumnos por paralelo; omitiendo `idSeccion` y `idModalidad` devuelve
+75–90. Distintas jornadas reusan la misma letra de paralelo, así que un join reducido
+haría que el docente pasara lista a alumnos de otra jornada. Evidencia en
+[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) § Paso 2.
+
+> Sobre los tipos: `asignaciones_profesores.paralelo` es `char(1)` y
+> `matriculas.paralelo` es `varchar(10)`. Se verificó que en la carrera 6 todos los
+> valores tienen longitud 1, así que `=` funciona. Aun así se compara con `TRIM()` en
+> ambos lados: cuesta nada y protege de que el sistema académico cargue `'A '`.
 
 ---
 
@@ -86,16 +103,15 @@ compartidas entre sistemas.
 
 ### `cplec_sesiones` — una clase dictada
 
+**Grano: día.** Sin horas ni bloques horarios — la Escuela de Conducción no usa el
+módulo de horarios. Si más adelante se necesita planificación, se agrega por migración.
+
 ```
 idSesion        INT PK AUTO_INCREMENT
 idAsignacion    INT      NOT NULL  → asignaciones_profesores(idAsignacion)
 idFecha         INT      NOT NULL  → fechas_horarios(idFecha)
-numeroBloque    TINYINT  NOT NULL DEFAULT 1     -- 1er, 2do… bloque de ese día
-idHora          INT      NULL      → horas_clases(idhora)   -- opcional
-horaInicio      TIME     NULL
-horaFin         TIME     NULL
-tipoBloque      ENUM('teorico','practico','taller') NOT NULL DEFAULT 'teorico'
-tema            VARCHAR(250) NULL   -- el "leccionario" propiamente dicho
+numeroBloque    TINYINT  NOT NULL DEFAULT 1     -- normalmente 1; la UI no lo muestra
+tema            VARCHAR(250) NOT NULL  -- tema general de la clase (el leccionario)
 observacion     VARCHAR(500) NULL
 estado          ENUM('borrador','cerrada') NOT NULL DEFAULT 'borrador'
 fechaCierre     DATETIME NULL
@@ -105,10 +121,17 @@ usuarioCreacion / fechaCreacion / usuarioActualiza / fechaActualizacion
 UNIQUE (idAsignacion, idFecha, numeroBloque)
 ```
 
-- `numeroBloque` (y no `idHora`) forma la clave única porque `idHora` es opcional y en
-  MySQL un `UNIQUE` con `NULL` **no** impide duplicados.
+- `tema` es **obligatorio**: es el propósito del leccionario. Una sesión sin tema no es
+  un registro de clase.
+- `numeroBloque` cubre el caso de dos clases de la misma asignación el mismo día. Va
+  desde el inicio porque forma parte de la clave única: agregarlo después obligaría a
+  recrear el índice sobre una tabla con datos.
 - `estado = 'cerrada'` congela la sesión: a partir de ahí solo un inspector puede
   reabrirla. Es lo que da validez al reporte.
+- **La fecha debe caer dentro de `asignaciones_profesores.fecha_inicial .. fecha_fin`**.
+  No se implementa con `CHECK` (MySQL 5.7 los parsea pero no los aplica, y la regla
+  cruza tablas): se valida en `SesionService`. Ver
+  [`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) § Paso 4.
 
 ### `cplec_asistencias` — la marca por estudiante
 

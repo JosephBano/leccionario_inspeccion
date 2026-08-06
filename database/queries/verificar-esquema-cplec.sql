@@ -12,7 +12,7 @@ FROM   information_schema.TABLES
 WHERE  TABLE_SCHEMA = 'sigafi_es'
   AND  TABLE_NAME LIKE 'cplec\_%';
 
--- 3. Foreign keys creadas (esperado: 5 → 3 en sesiones + 2 en asistencias)
+-- 3. Foreign keys creadas (esperado: 4 → 2 en sesiones + 2 en asistencias)
 SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME,
        REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
 FROM   information_schema.KEY_COLUMN_USAGE
@@ -91,11 +91,15 @@ GROUP  BY ap.idPeriodo, p.detalle
 ORDER  BY ap.idPeriodo DESC;
 
 -- 12. Alumnos por paralelo de un período (unidad de trabajo del docente)
-SELECT ap.idAsignacion, ap.idProfesor, a.Asignatura, ap.paralelo,
+SELECT ap.idAsignacion, ap.idProfesor, a.Asignatura,
+       c.nivel AS tipoLicencia, s.seccion AS jornada, mo.modalidad, ap.paralelo,
+       ap.fecha_inicial, ap.fecha_fin,
        COUNT(m.idMatricula) AS alumnos
 FROM   asignaciones_profesores ap
-JOIN   cursos      c ON c.idNivel      = ap.idNivel AND c.idCarrera = 6
-JOIN   asignaturas a ON a.idAsignatura = ap.idAsignatura
+JOIN   cursos      c  ON c.idNivel      = ap.idNivel AND c.idCarrera = 6
+JOIN   asignaturas a  ON a.idAsignatura = ap.idAsignatura
+JOIN   secciones   s  ON s.idSeccion    = ap.idSeccion
+JOIN   modalidades mo ON mo.idModalidad = ap.idModalidad
 LEFT   JOIN matriculas m
        ON  m.idPeriodo   = ap.idPeriodo
        AND m.idNivel     = ap.idNivel
@@ -103,9 +107,10 @@ LEFT   JOIN matriculas m
        AND m.idModalidad = ap.idModalidad
        AND TRIM(m.paralelo) = TRIM(ap.paralelo)
        AND COALESCE(m.retirado, 0) = 0
-WHERE  ap.idPeriodo = 'SEE2023'          -- ← período objetivo
+WHERE  ap.idPeriodo = 'OCC2025'          -- ← período objetivo
   AND  COALESCE(ap.activo, 1) = 1
-GROUP  BY ap.idAsignacion, ap.idProfesor, a.Asignatura, ap.paralelo
+GROUP  BY ap.idAsignacion, ap.idProfesor, a.Asignatura, c.nivel, s.seccion,
+          mo.modalidad, ap.paralelo, ap.fecha_inicial, ap.fecha_fin
 ORDER  BY alumnos DESC;
 
 -- 13. Confirmación de que la carrera 6 no usa el módulo de horarios
