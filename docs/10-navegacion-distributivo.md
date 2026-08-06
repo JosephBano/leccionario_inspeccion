@@ -211,15 +211,107 @@ aplica**, y además la regla cruza dos tablas. Se valida en `SesionService` y ti
 
 ### `periodos.activo` no sirve para saber cuál es el período vigente
 
-Casi todos los períodos tienen `activo = 1`, incluidos los de 2022. Para resolver el
-período por defecto se usa la **fecha de hoy contra el rango de la asignación**:
+Casi todos los períodos tienen `activo = 1`, incluidos los de 2022. Es un flag inútil
+para este propósito.
+
+---
+
+## Paso 5 — Resolución del período: **un período por nivel, el más reciente**
+
+Los niveles de la carrera 6 (tipos de licencia) corren en calendarios **independientes**:
+TIPO "C" puede estar a mitad de período mientras TIPO "E" acaba de cerrar. No existe
+"el período activo" del sistema — existe uno **por nivel**.
+
+Regla: para cada `idNivel` de la carrera 6, se toma el período con la asignación más
+reciente.
+
+### Consulta
+
+MySQL 5.7 no tiene funciones de ventana, así que el "máximo por grupo" se resuelve con
+una clave de ordenamiento compuesta dentro de un `HAVING` correlacionado:
 
 ```sql
-WHERE CURDATE() BETWEEN ap.fecha_inicial AND ap.fecha_fin
+SELECT ap.idNivel,
+       c.nivel      AS tipoLicencia,
+       ap.idPeriodo,
+       p.detalle,
+       MIN(ap.fecha_inicial) AS fechaInicial,
+       MAX(ap.fecha_fin)     AS fechaFin,
+       CASE
+         WHEN CURDATE() BETWEEN MIN(ap.fecha_inicial) AND MAX(ap.fecha_fin) THEN 'VIGENTE'
+         WHEN CURDATE() <  MIN(ap.fecha_inicial)                            THEN 'FUTURO'
+         ELSE                                                                    'CERRADO'
+       END AS vigencia,
+       COUNT(*)                      AS asignaciones,
+       COUNT(DISTINCT ap.idProfesor) AS docentes
+FROM   asignaciones_profesores ap
+JOIN   cursos   c ON c.idNivel   = ap.idNivel AND c.idCarrera = 6
+JOIN   periodos p ON p.idPeriodo = ap.idPeriodo
+WHERE  COALESCE(ap.activo, 1) = 1
+GROUP  BY ap.idNivel, c.nivel, ap.idPeriodo, p.detalle
+HAVING CONCAT(DATE_FORMAT(MAX(ap.fecha_fin),     '%Y%m%d'),
+              DATE_FORMAT(MIN(ap.fecha_inicial), '%Y%m%d'),
+              ap.idPeriodo)
+     = (SELECT MAX(CONCAT(DATE_FORMAT(x.fin, '%Y%m%d'),
+                          DATE_FORMAT(x.ini, '%Y%m%d'),
+                          x.idPeriodo))
+        FROM  (SELECT ap2.idNivel,
+                      ap2.idPeriodo,
+                      MAX(ap2.fecha_fin)     AS fin,
+                      MIN(ap2.fecha_inicial) AS ini
+               FROM   asignaciones_profesores ap2
+               WHERE  COALESCE(ap2.activo, 1) = 1
+               GROUP  BY ap2.idNivel, ap2.idPeriodo) x
+        WHERE x.idNivel = ap.idNivel)
+ORDER  BY fechaFin DESC, c.idNivel;
 ```
 
-y si eso no devuelve nada, se ofrece el selector de períodos ordenado por
-`MAX(ap.fecha_fin)` descendente.
+### Resultado real (ejecutado el 2026-08-06)
+
+| idNivel | Tipo de licencia | Período | Desde | Hasta | Vigencia | Asigs |
+|---|---|---|---|---|---|---|
+| 35 | TIPO "C" | `OCC2025` | 2025-10-04 | 2026-12-18 | **VIGENTE** | 166 |
+| 37 | TIPO "E" | `JUE2026` | 2026-07-06 | 2026-07-31 | CERRADO | 9 |
+| 39 | TIPO "E" CONVALIDADA | `JEC2026` | 2026-07-06 | 2026-07-31 | CERRADO | 4 |
+| 36 | TIPO "D" | `NOD2025` | 2026-01-22 | 2026-05-19 | CERRADO | 6 |
+| 38 | TIPO "D" CONVALIDADA | `NDC2025` | 2026-01-22 | 2026-02-20 | CERRADO | 2 |
+| 64 | RECUPERACION PUNTOS | `ORP2025` | 2025-10-29 | 2025-10-30 | CERRADO | 1 |
+
+Exactamente 6 filas, una por nivel.
+
+### Dos detalles que no se pueden omitir
+
+**1. El desempate es obligatorio.** El nivel 37 tenía **dos** períodos con el mismo
+`fecha_fin` (`ENE2026` y `JUE2026`, ambos terminan 2026-07-31). Con un
+`HAVING MAX(fecha_fin) = (SELECT MAX(...))` simple, la consulta devuelve **7 filas** y
+el nivel 37 aparece duplicado. La clave compuesta desempata por:
+
+```
+fecha_fin  →  fecha_inicial  →  idPeriodo
+```
+
+`JUE2026` gana porque arranca el 2026-07-06 contra el 2026-01-12 de `ENE2026`. El
+orden es determinista: dos ejecuciones devuelven siempre lo mismo.
+
+**2. "Más reciente" no es lo mismo que "vigente".** Hoy solo el nivel 35 está en curso;
+el resto tiene su último período cerrado, el del nivel 37 por menos de una semana. Por
+eso la consulta devuelve la columna `vigencia`, y la interfaz **debe** mostrarla: un
+docente de TIPO "E" que abra `JUE2026` tiene que ver que ese período ya terminó, no
+suponer que está pasando lista sobre el período en curso.
+
+`FUTURO` cubre el caso de un período ya cargado que todavía no arranca.
+
+### Implementación
+
+El backend expone esto en `GET /api/periodos/por-nivel`. En `Application` conviene
+resolverlo en dos pasos en vez de traducir ese `HAVING` a LINQ:
+
+1. Una consulta que agrupe por `(idNivel, idPeriodo)` con sus `MIN`/`MAX` y conteos.
+2. El "más reciente por nivel" se elige en memoria — son 6 niveles, no hay costo.
+
+Queda más legible y testeable. El SQL de arriba se conserva en
+`database/queries/verificar-esquema-cplec.sql` (consulta 14) para verificación directa
+contra la base.
 
 ---
 

@@ -120,3 +120,48 @@ FROM   horario_detalle hd
 JOIN   asignaciones_profesores ap ON ap.idAsignacion = hd.idAsignacion
 JOIN   cursos c ON c.idNivel = ap.idNivel
 WHERE  c.idCarrera = 6;
+
+-- 14. Resolución del período: UN período por nivel, el más reciente.
+--     Los tipos de licencia corren en calendarios independientes; no existe
+--     "el período activo" del sistema, existe uno por nivel.
+--     `periodos.activo` NO sirve: está en 1 en casi todos, incluidos los de 2022.
+--
+--     MySQL 5.7 no tiene funciones de ventana → el máximo por grupo se resuelve
+--     con una clave compuesta (fecha_fin, fecha_inicial, idPeriodo) en el HAVING.
+--     El desempate es OBLIGATORIO: el nivel 37 tiene dos períodos que terminan el
+--     mismo día y sin él la consulta devuelve 7 filas en vez de 6.
+--
+--     Esperado: exactamente una fila por cada nivel de la carrera 6.
+SELECT ap.idNivel,
+       c.nivel      AS tipoLicencia,
+       ap.idPeriodo,
+       p.detalle,
+       MIN(ap.fecha_inicial) AS fechaInicial,
+       MAX(ap.fecha_fin)     AS fechaFin,
+       CASE
+         WHEN CURDATE() BETWEEN MIN(ap.fecha_inicial) AND MAX(ap.fecha_fin) THEN 'VIGENTE'
+         WHEN CURDATE() <  MIN(ap.fecha_inicial)                            THEN 'FUTURO'
+         ELSE                                                                    'CERRADO'
+       END AS vigencia,
+       COUNT(*)                      AS asignaciones,
+       COUNT(DISTINCT ap.idProfesor) AS docentes
+FROM   asignaciones_profesores ap
+JOIN   cursos   c ON c.idNivel   = ap.idNivel AND c.idCarrera = 6
+JOIN   periodos p ON p.idPeriodo = ap.idPeriodo
+WHERE  COALESCE(ap.activo, 1) = 1
+GROUP  BY ap.idNivel, c.nivel, ap.idPeriodo, p.detalle
+HAVING CONCAT(DATE_FORMAT(MAX(ap.fecha_fin),     '%Y%m%d'),
+              DATE_FORMAT(MIN(ap.fecha_inicial), '%Y%m%d'),
+              ap.idPeriodo)
+     = (SELECT MAX(CONCAT(DATE_FORMAT(x.fin, '%Y%m%d'),
+                          DATE_FORMAT(x.ini, '%Y%m%d'),
+                          x.idPeriodo))
+        FROM  (SELECT ap2.idNivel,
+                      ap2.idPeriodo,
+                      MAX(ap2.fecha_fin)     AS fin,
+                      MIN(ap2.fecha_inicial) AS ini
+               FROM   asignaciones_profesores ap2
+               WHERE  COALESCE(ap2.activo, 1) = 1
+               GROUP  BY ap2.idNivel, ap2.idPeriodo) x
+        WHERE x.idNivel = ap.idNivel)
+ORDER  BY fechaFin DESC, c.idNivel;

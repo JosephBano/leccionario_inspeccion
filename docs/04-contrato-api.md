@@ -114,11 +114,45 @@ Rol: `cplec_docente`. El `idProfesor` sale del token.
 `tipoLicencia` viene de `cursos.nivel` y `jornada` de `secciones.seccion` — para la
 carrera 6 eso es lo que significan. El cliente muestra la etiqueta, no los IDs.
 
-Si se omite `idPeriodo`, el backend resuelve el período por
-`CURDATE() BETWEEN ap.fecha_inicial AND ap.fecha_fin`. **No** se usa
-`periodos.activo`: casi todos los períodos lo tienen en 1, incluidos los de 2022.
-Si esa consulta no devuelve nada, la respuesta trae `items: []` y
-`periodosDisponibles` con la lista ordenada por `MAX(fecha_fin)` descendente.
+Si se omite `idPeriodo`, el backend resuelve **un período por nivel: el más reciente**
+(ver `GET /api/periodos/por-nivel` abajo) y devuelve las asignaciones del docente en
+todos ellos. **No** se usa `periodos.activo`: casi todos lo tienen en 1, incluidos los
+de 2022.
+
+### `GET /api/periodos/por-nivel`
+
+Roles: `cplec_docente` · `cplec_inspector`.
+
+Devuelve **una fila por cada nivel (tipo de licencia) de la carrera 6**, con su período
+más reciente. Los tipos de licencia corren en calendarios independientes: no existe "el
+período activo" del sistema, existe uno por nivel.
+
+```json
+{
+  "items": [
+    { "idNivel": 35, "tipoLicencia": "TIPO \"C\"", "idPeriodo": "OCC2025",
+      "detalle": "OCTUBRE 2025 - ABRIL 2026",
+      "fechaInicial": "2025-10-04", "fechaFin": "2026-12-18",
+      "vigencia": "VIGENTE", "asignaciones": 166, "docentes": 25 },
+    { "idNivel": 37, "tipoLicencia": "TIPO \"E\"", "idPeriodo": "JUE2026",
+      "detalle": "JULIO 2026 - ABRIL 2027",
+      "fechaInicial": "2026-07-06", "fechaFin": "2026-07-31",
+      "vigencia": "CERRADO", "asignaciones": 9, "docentes": 6 }
+  ]
+}
+```
+
+- `vigencia` ∈ `VIGENTE` · `FUTURO` · `CERRADO`, calculada contra la fecha del servidor.
+- **El cliente debe mostrar `vigencia`.** "Más reciente" no es "vigente": medido el
+  2026-08-06, solo el nivel 35 estaba en curso. Un docente que abra un período `CERRADO`
+  tiene que verlo, no suponer que está pasando lista sobre el período actual.
+- El desempate entre períodos que terminan el mismo día es
+  `fecha_fin → fecha_inicial → idPeriodo`, determinista. Sin él, un nivel aparece
+  duplicado (le pasa hoy al nivel 37).
+- Para un docente, la respuesta se limita a los niveles en los que tiene distributivo.
+
+Detalle e implementación en
+[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) § Paso 5.
 
 ### `GET /api/paralelos/{idAsignacion}/alumnos`
 Roles: `cplec_docente` (solo suyos) · `cplec_inspector` (cualquiera).
