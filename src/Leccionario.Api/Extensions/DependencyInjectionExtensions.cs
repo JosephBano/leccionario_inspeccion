@@ -2,9 +2,11 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Leccionario.Api.Application.Auth.Authorization;
 using Leccionario.Api.Application.Authenticacion.Auth;
+using Leccionario.Api.Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -56,26 +58,21 @@ public static class DependencyInjectionExtensions
     }
 
     /// <summary>
-    /// Registra la infraestructura compartida. <strong>En el scaffold está
-    /// intencionalmente vacío</strong> — el <c>sigafi_esContext</c> y los
-    /// servicios que dependen de él (AuthService, RefreshTokenService,
-    /// DistributivoGuard, AuditService) llegan con el PR
-    /// <c>feature/ef-powertools-scaffold</c> (#2).
+    /// Registra la infraestructura compartida: el <c>sigafi_esContext</c> con
+    /// el proveedor MySQL de Pomelo, apuntando a <c>sigafi_es</c> en MySQL 5.7.
+    /// Los servicios que dependen del contexto (AuthService,
+    /// RefreshTokenService, DistributivoGuard, AuditService) llegan en los
+    /// PRs siguientes — ver <c>docs/05 §"Regeneración de entidades"</c>.
     /// </summary>
     public static IServiceCollection AddInfrastructureLayer(this IServiceCollection services, IConfiguration configuration)
     {
-        // Aquí se agregará:
-        //   services.AddDbContext<sigafi_esContext>(o => o.UseMySql(...));
-        //   services.AddScoped<IAuthService, AuthService>();
-        //   services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-        //   services.AddScoped<IDistributivoGuard, DistributivoGuard>();
-        //   services.AddScoped<IAuditService, AuditService>();
-        // … cuando EF Power Tools scaffoldee las entidades.
+        var connectionString = configuration.GetConnectionString("SigafiDb")
+            ?? throw new InvalidOperationException("Falta ConnectionStrings:SigafiDb en la configuración.");
 
-        // El compilador de C# no acepta un bloque vacío sin uso de "configuration".
-        // Lo marcamos como usado explícitamente para que el PR siguiente no se
-        // encuentre con un warning al pegarle el AddDbContext.
-        _ = configuration;
+        services.AddDbContext<sigafi_esContext>(o =>
+            o.UseMySql(connectionString, ServerVersion.Create(new Version(5, 7, 21), Pomelo.EntityFrameworkCore.MySql.Infrastructure.ServerType.MySql), my =>
+                my.EnableRetryOnFailure(maxRetryCount: 2, maxRetryDelay: TimeSpan.FromSeconds(2), errorNumbersToAdd: null)));
+
         return services;
     }
 
