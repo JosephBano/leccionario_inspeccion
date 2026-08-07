@@ -3,7 +3,7 @@ namespace Leccionario.Api.Application.Distributivo;
 /// <summary>
 /// Fila devuelta por <c>GET /api/periodos/por-nivel</c>. Una por cada nivel
 /// (tipo de licencia) de la carrera 6, con el período más reciente de ese
-/// nivel. Ver <c>docs/04-contrato-api.md</c> § Docente y <c>docs/10</c> § 5.
+/// nivel. Ver <c>docs/04-contrato-api.md</c> sección Docente y <c>docs/10</c> sección 5.
 /// </summary>
 public sealed class PeriodoPorNivelDto
 {

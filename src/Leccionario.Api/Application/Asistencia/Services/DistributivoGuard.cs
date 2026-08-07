@@ -6,7 +6,7 @@ namespace Leccionario.Api.Application.Asistencia.Services;
 
 /// <summary>
 /// Implementación de <see cref="IDistributivoGuard"/> basada en
-/// <c>sigafi_esContext</c>. Ver <c>ADR-007</c> y <c>docs/03 §5.2</c>.
+/// <c>sigafi_esContext</c>. Ver <c>ADR-007</c> y <c>docs/03 sección 5.2</c>.
 /// </summary>
 /// <remarks>
 /// <para>Filtro canónico:</para>

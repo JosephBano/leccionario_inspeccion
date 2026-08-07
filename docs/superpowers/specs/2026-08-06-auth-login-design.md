@@ -5,7 +5,7 @@ date: 2026-08-06
 branch: feature/auth-login
 target_pr: <TBD>
 spec: docs/03-autenticacion-rbac.md · docs/04-contrato-api.md · docs/07-pruebas.md
-      · docs/superpowers/plans/001-scaffold-base-design.md §2c
+      · docs/superpowers/plans/001-scaffold-base-design.md sección 2c
 author: arquitecto
 ---
 
@@ -13,7 +13,7 @@ author: arquitecto
 
 ## Resumen ejecutivo
 
-PR #3 del roadmap (`docs/superpowers/plans/001-scaffold-base-design.md §4.1`). Implementa
+PR #3 del roadmap (`docs/superpowers/plans/001-scaffold-base-design.md sección 4.1`). Implementa
 `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout` y
 `GET /api/auth/me`, con TDD sobre los casos de `docs/07`. Es el puerto ajustado de
 `BienestarInstitucional.Api/Application/Services/AuthService.cs`, recortado a lo que
@@ -42,7 +42,7 @@ que documente 401. Ese fix de documentación es parte de este PR.
 
 Aunque el roadmap original lo separaba (dependía del guard de distributivo), se decidió
 incluirlo ahora con `paralelos: []` hardcodeado. `permisos` no depende del guard — es
-una función pura de los roles del JWT (ver §3). El PR que agregue
+una función pura de los roles del JWT (ver sección 3). El PR que agregue
 `DistributivoGuard` + la consulta de distributivo (`feature/rbac-distributivo-guard` o
 `feature/distributivo-periodos`) solo reemplaza la lista vacía por la real; el contrato
 del DTO no cambia.
@@ -52,7 +52,7 @@ del DTO no cambia.
 La versión de Bienestar resuelve alumno + profesor + "externos" (con generación de ids
 `EXT-…`, reintentos ante colisión de PK, asignación automática de rol por defecto).
 cplec solo tiene un camino: `profesor`, sin asignación automática de rol
-(`docs/03 §2`: "auto-registro: verificar `profesores.clave`... no asigna rol"). Se
+(`docs/03 sección 2`: "auto-registro: verificar `profesores.clave`... no asigna rol"). Se
 incorpora como método privado dentro de `AuthService` en vez de una interfaz aparte.
 
 ### d) Sin `IHttpContextAccessor` en la capa de Application
@@ -87,7 +87,7 @@ Extensions/
   DependencyInjectionExtensions.cs   MODIFICADO — registra AuthService,
     RefreshTokenService, IAuthService en AddInfrastructureLayer (dependen de
     sigafi_esContext); agrega ApiBehaviorOptions.InvalidModelStateResponseFactory
-    en AddApplicationLayer (ver §4)
+    en AddApplicationLayer (ver sección 4)
 
 Controllers/Auth/
   AuthController.cs       NUEVO
@@ -104,7 +104,7 @@ Leccionario.Tests/
 
 ## 2. Flujo login / refresh / logout
 
-Sigue `docs/03 §2` literal:
+Sigue `docs/03 sección 2` literal:
 
 ```
 LoginAsync(username, password, deviceInfo, ipAddress):
@@ -192,7 +192,7 @@ public sealed class PermisosDto
 }
 ```
 
-Shape tomado de `ADR-005 §2c` (más completo que el resumen de `docs/04`).
+Shape tomado de `ADR-005 sección 2c` (más completo que el resumen de `docs/04`).
 
 `Paralelos` = `[]` fijo en este PR (comentario en código explicando por qué, y
 referenciando el PR que lo completa).
@@ -236,7 +236,7 @@ Se agrega un `ApiBehaviorOptions.InvalidModelStateResponseFactory` global (en
   fallback legacy ni por auto-registro); sin rol `cplec_*` → `SinAccesoSistemaException`;
   auto-registro de profesor nuevo persiste `contrasenia = Hash(password)` directamente
   (sin centinela — cplec verifica la credencial legacy *antes* de crear la fila, a
-  diferencia de Bienestar, ver §0c); login con credencial legacy migra el hash a bcrypt
+  diferencia de Bienestar, ver sección 0c); login con credencial legacy migra el hash a bcrypt
   sin duplicar la fila en un segundo login.
 - **`RefreshTokenServiceTests.cs`**: emisión, rotación exitosa, expirado, revocado,
   reuso de token ya rotado → revoca toda la familia.

@@ -45,7 +45,7 @@ tiene firma válida acá. Por eso hacen falta las tres capas, siempre:
 
 Todo endpoint nuevo que reciba un `idAsignacion` o un `idSesion` pasa por
 `DistributivoGuard`. Es lo que más tests debe tener.
-Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) § 5.
+Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) sección 5.
 
 ## Modelo de datos — lo no obvio
 
@@ -85,7 +85,7 @@ cd client && npm test && npm run lint && npm run build   # 24 tests frontend + l
 - Aliases: `@core/*`, `@features/*`, `@shared/*`, `@layout/*`, `@env/*`.
 - Access token en memoria (signal), refresh token en `localStorage`.
 - Interceptor con refresh-once (single-flight) y guardia contra bucles.
-- Manejo de errores por `codigo` (ver `docs/04 § Formato de error`), nunca por `mensaje`.
+- Manejo de errores por `codigo` (ver `docs/04 sección Formato de error`), nunca por `mensaje`.
 - Regla de import: `core/` y `shared/` **nunca** importan de `features/`.
 
 ## Referencia externa

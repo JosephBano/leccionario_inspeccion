@@ -9,7 +9,7 @@ namespace Leccionario.Api.Application.Authenticacion.Auth;
 /// Crítico: esta excepción <strong>solo</strong> se lanza DESPUÉS de validar la
 /// credencial. Si se validara <c>activo</c> antes, una cuenta inactiva caería en
 /// el camino de auto-registro y chocar contra el UNIQUE (1062) → 500. Además
-/// permitiría enumerar el padrón de cuentas desactivadas. Ver docs/03 §2.
+/// permitiría enumerar el padrón de cuentas desactivadas. Ver docs/03 sección 2.
 /// </remarks>
 public sealed class CuentaInactivaException : Exception
 {

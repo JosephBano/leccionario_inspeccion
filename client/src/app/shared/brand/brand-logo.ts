@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
  * Reconstruye el isotipo ISTPET siguiendo el Manual de Identidad Corporativa
- * (retícula §1, tipografía §8-9): "IST/PET" en dorado + "Tecnológico Traversari"
+ * (retícula sección 1, tipografía sección 8-9): "IST/PET" en dorado + "Tecnológico Traversari"
  * en el color de contraste del fondo, separados por la barra vertical de marca.
  */
 @Component({

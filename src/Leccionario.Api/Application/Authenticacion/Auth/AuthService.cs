@@ -216,7 +216,7 @@ public sealed class AuthService : IAuthService
             if (!await VerificarCredencialAsync(usuario, password, ct))
                 throw new UnauthorizedAccessException("Credenciales inválidas.");
 
-            // Crítico: activo se valida DESPUÉS de la credencial (docs/03 §2).
+            // Crítico: activo se valida DESPUÉS de la credencial (docs/03 sección 2).
             if (usuario.activo != 1)
                 throw new CuentaInactivaException();
 
@@ -249,7 +249,7 @@ public sealed class AuthService : IAuthService
     private async Task MigrarPasswordSiCorrespondeAsync(usuarios usuario, string password, CancellationToken ct)
     {
         // Solo migra el caso "hash centinela + credencial legacy correcta" —
-        // NO el caso "contrasenia en texto plano ya matcheaba" (docs/03 §2).
+        // NO el caso "contrasenia en texto plano ya matcheaba" (docs/03 sección 2).
         if (PasswordService.IsHashed(usuario.contrasenia)
             && EsProfesor(usuario.tablaSigafi)
             && await MatcheaProfesorLegacyAsync(usuario.idSigafi, password, ct))

@@ -78,7 +78,7 @@ public sealed class PasswordServiceTests
         var c1 = PasswordService.GenerarHashCentinela();
         var c2 = PasswordService.GenerarHashCentinela();
 
-        c1.Should().NotBe(c2, "el centinela es aleatorio por diseño (ver docs/03 §2)");
+        c1.Should().NotBe(c2, "el centinela es aleatorio por diseño (ver docs/03 sección 2)");
         c1.Should().StartWith("$2");
         c2.Should().StartWith("$2");
     }

@@ -103,7 +103,7 @@ Notas:
 | Hooks                     | `.githooks/{pre-commit,pre-push,commit-msg}`        | Activar con `scripts/setup-hooks.sh`.                                                       |
 | Base de datos             | `database/{migrations,rollback,queries}/`           | `.sql` versionados, sin EF migrations.                                                      |
 
-Comandos canónicos (sustituyen los de `README.md` § "Arranque rápido" y `CLAUDE.md` § "Comandos"):
+Comandos canónicos (sustituyen los de `README.md` sección "Arranque rápido" y `CLAUDE.md` sección "Comandos"):
 
 ```bash
 # Backend
@@ -167,10 +167,10 @@ Un PR se considera mergeable solo si cumple **todo**:
 ## 7. Política de actualización
 
 - **Triggers** (cualquiera obliga a actualizar este archivo en el mismo PR):
-  - Merge de un PR referenciado en la tabla § 2 → mover de columna.
+  - Merge de un PR referenciado en la tabla sección 2 → mover de columna.
   - Apertura de un PR que introduce un nuevo hito → añadir fila.
-  - Cambio de secuencia entre hitos → modificar el grafo § 3 y la columna "Bloqueado por".
-  - Cambio de paths canónicos → modificar § 4.
+  - Cambio de secuencia entre hitos → modificar el grafo sección 3 y la columna "Bloqueado por".
+  - Cambio de paths canónicos → modificar sección 4.
 - **Cadencia**: cada cierre de hito (M-impar terminado) o al menos una vez por release
   a `develop`, lo que ocurra primero.
 - **Quién actualiza**: el autor del PR. El revisor **rechaza** el PR si el roadmap
@@ -184,7 +184,7 @@ Un PR se considera mergeable solo si cumple **todo**:
 
 ## 8. Backlog explícitamente fuera de v1
 
-Referencia: [`docs/00-vision-alcance.md`](docs/00-vision-alcance.md) § "Fuera (v1)".
+Referencia: [`docs/00-vision-alcance.md`](docs/00-vision-alcance.md) sección "Fuera (v1)".
 
 | Idea                                          | Prioridad | Ticket / nota                                                                                  |
 | :-------------------------------------------- | :-------- | :--------------------------------------------------------------------------------------------- |
@@ -204,7 +204,7 @@ Referencia: [`docs/00-vision-alcance.md`](docs/00-vision-alcance.md) § "Fuera (
 1. ✅ Crear `docs/00-roadmap.md`.
 2. ✅ Alinear `README.md` a `src/` + `client/` y enlazar este roadmap.
 3. ✅ Alinear `CLAUDE.md` a `src/` + `client/`, reemplazar el resumen de "Estado actual"
-   por el de § 5 y corregir la afirmación "Backend y frontend: sin scaffoldear".
+   por el de sección 5 y corregir la afirmación "Backend y frontend: sin scaffoldear".
 4. ✅ Alinear `docs/06-lineamientos-frontend.md` a `client/` (`ng new client`).
 5. Verificación de follow-up (en el PR de roadmap):
    - `grep -RIn 'Backend/' README.md CLAUDE.md docs/00-roadmap.md docs/06-lineamientos-frontend.md` → 0 resultados.

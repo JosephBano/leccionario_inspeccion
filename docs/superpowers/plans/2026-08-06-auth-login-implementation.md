@@ -15,7 +15,7 @@
 - Target framework `net8.0`, build with `dotnet build src/Leccionario.sln --warnaserror` — zero warnings, zero errors, always.
 - **Every "boolean" column in this schema is `sbyte`/`sbyte?` (MySQL `tinyint`), NOT `bool`**, except `cplec_sesiones.activo` which is a real `bool?`. Compare with `== 1` / `!= 1`, never `== true`. This trips people up constantly — `usuarios.activo`, `rbac_rol.esActivo`, `rbac_usuario_rol.esActivo`, `rbac_modulos_operaciones.esActivo`, `rbac_rol_modulo_operacion.esActivo`, `profesores.esReal` are all `sbyte`/`sbyte?`.
 - `Domain/Entities/*.cs` is generated code — **never edit it by hand**. Nothing in this plan touches it.
-- Never wrap EF writes in `Database.BeginTransactionAsync()` in this plan — the InMemory provider used by unit tests throws `InvalidOperationException` on it (`TransactionIgnoredWarning`). Every write in this plan touches a single table, so a single `SaveChangesAsync()` call is already atomic — that satisfies `docs/05 §Transacciones` (its rule is about writes spanning *multiple tables*).
+- Never wrap EF writes in `Database.BeginTransactionAsync()` in this plan — the InMemory provider used by unit tests throws `InvalidOperationException` on it (`TransactionIgnoredWarning`). Every write in this plan touches a single table, so a single `SaveChangesAsync()` call is already atomic — that satisfies `docs/05 sección Transacciones` (its rule is about writes spanning *multiple tables*).
 - MSTest style: `[TestClass]` / `[TestMethod]`, method names `Metodo_Escenario_ResultadoEsperado`, assertions via FluentAssertions (`.Should()`).
 - No secrets in test code — reuse the existing test constant pattern (`"this-is-a-test-secret-32-bytes-min!"` for JWT secrets, already used in `JwtTokenServiceTests.cs`).
 - Run `dotnet build src/Leccionario.sln --warnaserror && dotnet test src/Leccionario.sln` after every task and confirm it is green before committing.
@@ -73,8 +73,8 @@ namespace Leccionario.Api.Application.Common.Exceptions;
 
 /// <summary>
 /// 403 SIN_ACCESO_SISTEMA — el usuario autenticó correctamente pero no tiene
-/// ningún rol activo con permisos sobre el sistema <c>cplec</c>. Ver docs/03 §2
-/// paso 3 y docs/04 §"Formato de error".
+/// ningún rol activo con permisos sobre el sistema <c>cplec</c>. Ver docs/03 sección 2
+/// paso 3 y docs/04 sección "Formato de error".
 /// </summary>
 public sealed class SinAccesoSistemaException : ProhibidoException
 {
@@ -242,7 +242,7 @@ public sealed class RefreshTokenResponseDto
 /// <summary>
 /// Resumen de un paralelo del docente. Shape fijo desde este PR aunque
 /// <c>/api/auth/me</c> siempre devuelva la lista vacía hasta que exista el
-/// DistributivoGuard (ver docs/superpowers/specs/2026-08-06-auth-login-design.md §3).
+/// DistributivoGuard (ver docs/superpowers/specs/2026-08-06-auth-login-design.md sección 3).
 /// </summary>
 public sealed class ParaleloResumenDto
 {
@@ -258,7 +258,7 @@ public sealed class ParaleloResumenDto
     public required int TotalAlumnos { get; init; }
 }
 
-/// <summary>Permisos derivados puramente de los roles del JWT — ver docs/03 §4.</summary>
+/// <summary>Permisos derivados puramente de los roles del JWT — ver docs/03 sección 4.</summary>
 public sealed class PermisosDto
 {
     public required bool PuedeEditarAsistencia { get; init; }
@@ -559,7 +559,7 @@ namespace Leccionario.Api.Application.Authenticacion.Auth;
 /// Implementación de <see cref="IRefreshTokenService"/>. Adapta la lógica de
 /// rotación + detección de reuso de
 /// <c>BienestarInstitucional.Api/.../RefreshTokenService.cs</c> al contrato
-/// propio de cplec (ver docs/superpowers/specs/2026-08-06-auth-login-design.md §2).
+/// propio de cplec (ver docs/superpowers/specs/2026-08-06-auth-login-design.md sección 2).
 /// </summary>
 public sealed class RefreshTokenService : IRefreshTokenService
 {
@@ -723,7 +723,7 @@ git commit -m "feat(auth): implementar RefreshTokenService con rotacion y detecc
 - Create: `src/Leccionario.Tests/AuthServiceTests.cs`
 
 **Interfaces:**
-- Consumes: `IAuthService` (Task 4), `AuthDtos` types (Task 3), `IRefreshTokenService`/`RefreshTokenValidationResult`/`RefreshTokenStatus` (existing + Task 5), `IJwtTokenService`/`JwtTokenClaims`/`ExpiryHours` (existing + Task 2), `PasswordService` (existing: `Hash`, `Verify`, `IsHashed`), `CuentaInactivaException` (existing), `SinAccesoSistemaException` (Task 1). Entities: `usuarios` (`idUsuario` int, `idSigafi` string, `tablaSigafi` string, `nombre` string?, `contrasenia` string, `activo` sbyte, `administrador` sbyte, `emailInstitucional` string?), `profesores` (`idProfesor` string, `apellidos` string?, `nombres` string?, `clave` string?, `esReal` sbyte?, `emailInstitucional` string?, `email` string?), `rbac_rol`/`rbac_usuario_rol`/`rbac_rol_modulo_operacion`/`rbac_modulos_operaciones`/`rbac_modulos`/`rbac_sistema` navigation chain (all confirmed present in `Domain/Entities/`, see spec §2). `sigafi_esContext` (`DbSet<usuarios> usuarios`, `DbSet<profesores> profesores`, `DbSet<rbac_rol> rbac_rol`).
+- Consumes: `IAuthService` (Task 4), `AuthDtos` types (Task 3), `IRefreshTokenService`/`RefreshTokenValidationResult`/`RefreshTokenStatus` (existing + Task 5), `IJwtTokenService`/`JwtTokenClaims`/`ExpiryHours` (existing + Task 2), `PasswordService` (existing: `Hash`, `Verify`, `IsHashed`), `CuentaInactivaException` (existing), `SinAccesoSistemaException` (Task 1). Entities: `usuarios` (`idUsuario` int, `idSigafi` string, `tablaSigafi` string, `nombre` string?, `contrasenia` string, `activo` sbyte, `administrador` sbyte, `emailInstitucional` string?), `profesores` (`idProfesor` string, `apellidos` string?, `nombres` string?, `clave` string?, `esReal` sbyte?, `emailInstitucional` string?, `email` string?), `rbac_rol`/`rbac_usuario_rol`/`rbac_rol_modulo_operacion`/`rbac_modulos_operaciones`/`rbac_modulos`/`rbac_sistema` navigation chain (all confirmed present in `Domain/Entities/`, see spec sección 2). `sigafi_esContext` (`DbSet<usuarios> usuarios`, `DbSet<profesores> profesores`, `DbSet<rbac_rol> rbac_rol`).
 - Produces (this task): `AuthService` class implementing `LoginAsync` fully. `RefreshTokenAsync`/`LogoutAsync`/`ObtenerMiPerfilAsync` are added in Task 7 as `NotImplementedException` stubs for now so the class compiles against `IAuthService`.
 
 **Note on `sbyte` fields:** re-read the Global Constraints section before writing any comparison against `activo`, `esActivo`, `esReal`.
@@ -1075,7 +1075,7 @@ public sealed class AuthService : IAuthService
             if (!await VerificarCredencialAsync(usuario, password, ct))
                 throw new UnauthorizedAccessException("Credenciales inválidas.");
 
-            // Crítico: activo se valida DESPUÉS de la credencial (docs/03 §2).
+            // Crítico: activo se valida DESPUÉS de la credencial (docs/03 sección 2).
             if (usuario.activo != 1)
                 throw new CuentaInactivaException();
 
@@ -1108,7 +1108,7 @@ public sealed class AuthService : IAuthService
     private async Task MigrarPasswordSiCorrespondeAsync(usuarios usuario, string password, CancellationToken ct)
     {
         // Solo migra el caso "hash centinela + credencial legacy correcta" —
-        // NO el caso "contrasenia en texto plano ya matcheaba" (docs/03 §2).
+        // NO el caso "contrasenia en texto plano ya matcheaba" (docs/03 sección 2).
         if (PasswordService.IsHashed(usuario.contrasenia)
             && EsProfesor(usuario.tablaSigafi)
             && await MatcheaProfesorLegacyAsync(usuario.idSigafi, password, ct))
@@ -1432,7 +1432,7 @@ In `src/Leccionario.Api/Application/Authenticacion/Auth/AuthService.cs`, replace
                 Roles = roles
             },
             // Vacío hasta que exista el DistributivoGuard — ver
-            // docs/superpowers/specs/2026-08-06-auth-login-design.md §3.
+            // docs/superpowers/specs/2026-08-06-auth-login-design.md sección 3.
             Paralelos = Array.Empty<ParaleloResumenDto>(),
             Permisos = CalcularPermisos(roles)
         };
@@ -1646,7 +1646,7 @@ namespace Leccionario.Api.Controllers.Auth;
 /// <c>try/catch</c> a propósito: las excepciones (<see cref="UnauthorizedAccessException"/>,
 /// <c>CuentaInactivaException</c>, <c>SinAccesoSistemaException</c>) las
 /// traduce <c>ApiExceptionMiddleware</c>. Ver
-/// docs/superpowers/specs/2026-08-06-auth-login-design.md §0e.
+/// docs/superpowers/specs/2026-08-06-auth-login-design.md sección 0e.
 /// </summary>
 [ApiController]
 [Route("api/auth")]
@@ -1796,7 +1796,7 @@ git commit -m "feat(auth): AuthController (login/refresh/logout/me) y wiring en 
 
 - [ ] **Step 1: Fix the table**
 
-In `docs/04-contrato-api.md`, find this line in the error-code table (§"Formato de error"):
+In `docs/04-contrato-api.md`, find this line in the error-code table (sección "Formato de error"):
 
 ```
 | 403 | `CUENTA_INACTIVA` | Credencial correcta, `usuarios.activo = 0` |
@@ -1853,7 +1853,7 @@ Expected: every test passes — this now includes the ~34 new tests from Tasks 1
 
 Run: `dotnet test src/Leccionario.sln /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:Exclude="[*]Leccionario.Api.Domain.Entities.*"`
 
-Open the generated `coverage.cobertura.xml` (or the console summary) and confirm `Application/Authenticacion/Auth/AuthService.cs` and `RefreshTokenService.cs` are at or above 80% line coverage, per `docs/07-pruebas.md §Cobertura`. If either is below 80%, identify the uncovered branch and add a test for it before moving on — don't lower the bar.
+Open the generated `coverage.cobertura.xml` (or the console summary) and confirm `Application/Authenticacion/Auth/AuthService.cs` and `RefreshTokenService.cs` are at or above 80% line coverage, per `docs/07-pruebas.md sección Cobertura`. If either is below 80%, identify the uncovered branch and add a test for it before moving on — don't lower the bar.
 
 - [ ] **Step 4: Sanity-check the git log**
 

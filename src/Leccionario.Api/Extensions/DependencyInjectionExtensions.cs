@@ -65,7 +65,7 @@ public static class DependencyInjectionExtensions
     /// el proveedor MySQL de Pomelo, apuntando a <c>sigafi_es</c> en MySQL 5.7.
     /// Los servicios que dependen del contexto (AuthService,
     /// RefreshTokenService, DistributivoGuard, AuditService) llegan en los
-    /// PRs siguientes — ver <c>docs/05 §"Regeneración de entidades"</c>.
+    /// PRs siguientes — ver <c>docs/05 sección "Regeneración de entidades"</c>.
     /// </summary>
     public static IServiceCollection AddInfrastructureLayer(this IServiceCollection services, IConfiguration configuration)
     {

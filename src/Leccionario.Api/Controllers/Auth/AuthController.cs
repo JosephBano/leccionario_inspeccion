@@ -10,7 +10,7 @@ namespace Leccionario.Api.Controllers.Auth;
 /// <c>try/catch</c> a propósito: las excepciones (<see cref="UnauthorizedAccessException"/>,
 /// <c>CuentaInactivaException</c>, <c>SinAccesoSistemaException</c>) las
 /// traduce <c>ApiExceptionMiddleware</c>. Ver
-/// docs/superpowers/specs/2026-08-06-auth-login-design.md §0e.
+/// docs/superpowers/specs/2026-08-06-auth-login-design.md sección 0e.
 /// </summary>
 [ApiController]
 [Route("api/auth")]

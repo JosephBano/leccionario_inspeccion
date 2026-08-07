@@ -1,6 +1,6 @@
 /**
  * Forma de error uniforme que devuelve el backend.
- * Ver `docs/04-contrato-api.md` § "Formato de error".
+ * Ver `docs/04-contrato-api.md` sección "Formato de error".
  * El cliente NUNCA decide por `mensaje` — siempre por `codigo`.
  */
 export interface ApiError {

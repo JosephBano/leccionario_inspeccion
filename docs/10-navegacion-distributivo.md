@@ -352,4 +352,4 @@ AND COALESCE(m.valida,   1) = 1     -- matrícula anulada fuera
 ```
 
 En los pasos 2 a 7 se revalida que `idAsignacion` pertenezca al distributivo del
-docente del token. Ver [`03-autenticacion-rbac.md`](03-autenticacion-rbac.md) § 5.
+docente del token. Ver [`03-autenticacion-rbac.md`](03-autenticacion-rbac.md) sección 5.

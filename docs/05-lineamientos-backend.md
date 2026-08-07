@@ -20,7 +20,7 @@ src/
 └── Leccionario.Tests/
 ```
 
-> Path canónico: `src/`. Ver [`docs/00-roadmap.md`](../00-roadmap.md) § 4.
+> Path canónico: `src/`. Ver [`docs/00-roadmap.md`](../00-roadmap.md) sección 4.
 
 `Program.cs` se mantiene delgado: todo el cableado vive en `Extensions/`.
 

@@ -54,7 +54,7 @@ database/
 > Mantener esta tabla al día es parte del PR que agrega la migración.
 
 Detalle de la primera aplicación (deltas medidos y pruebas de constraints) en
-[`migrations/README.md`](migrations/README.md) § Registro de la primera aplicación.
+[`migrations/README.md`](migrations/README.md) sección Registro de la primera aplicación.
 
 **Pendiente antes de usar el sistema:** asignar los roles `cplec_docente` y
 `cplec_inspector` a personas reales con

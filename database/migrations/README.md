@@ -282,7 +282,7 @@ Después, actualizá la tabla **Estado actual** de [`../README.md`](../README.md
 
 | Error | Causa | Solución |
 |---|---|---|
-| **1215** `Cannot add foreign key constraint` | Falta una tabla legacy (`asignaciones_profesores`, `fechas_horarios`, `matriculas`) | Estás sobre una base vacía. Ver [`../README.md`](../README.md) § Cómo replicar el esquema |
+| **1215** `Cannot add foreign key constraint` | Falta una tabla legacy (`asignaciones_profesores`, `fechas_horarios`, `matriculas`) | Estás sobre una base vacía. Ver [`../README.md`](../README.md) sección Cómo replicar el esquema |
 | **1217** `Cannot delete or update a parent row` | Rollback en orden equivocado | Corré primero el rollback de 003 |
 | **1062** `Duplicate entry` | Correcto: la clave única está haciendo su trabajo | Si aparece al aplicar una migración, revisá que no hayas editado la semilla |
 | **1064** `You have an error in your SQL syntax` cerca de `WITH` / `OVER` | Sintaxis de MySQL 8.0 | Producción es 5.7.21. Sin CTEs ni funciones de ventana |

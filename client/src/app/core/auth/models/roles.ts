@@ -1,6 +1,6 @@
 /**
  * Roles del sistema cplec. Espejo de `rbac_rol.codigo` (seed 001).
- * Doc-lineamiento: `docs/03 § 4` y `docs/04`.
+ * Doc-lineamiento: `docs/03 sección 4` y `docs/04`.
  */
 export const Roles = {
   docente: 'cplec_docente',

@@ -90,7 +90,7 @@ ALTER TABLE cplec_sesiones
   ADD INDEX ix_cplec_sesiones_tardias (esTardia, idFecha);
 ```
 
-`idHorarioInicio` es NULL-able por el modo transición (§6.4). `minutosPlanificados` en vez
+`idHorarioInicio` es NULL-able por el modo transición (sección 6.4). `minutosPlanificados` en vez
 de "horas": con franjas de duración libre, contar franjas miente.
 
 ### 4.3 Filas que `cplec` escribe en tablas compartidas

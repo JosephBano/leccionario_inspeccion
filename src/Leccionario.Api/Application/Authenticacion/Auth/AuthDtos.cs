@@ -53,7 +53,7 @@ public sealed class RefreshTokenResponseDto
 /// <summary>
 /// Resumen de un paralelo del docente. Shape fijo desde este PR aunque
 /// <c>/api/auth/me</c> siempre devuelva la lista vacía hasta que exista el
-/// DistributivoGuard (ver docs/superpowers/specs/2026-08-06-auth-login-design.md §3).
+/// DistributivoGuard (ver docs/superpowers/specs/2026-08-06-auth-login-design.md sección 3).
 /// </summary>
 public sealed class ParaleloResumenDto
 {
@@ -69,7 +69,7 @@ public sealed class ParaleloResumenDto
     public required int TotalAlumnos { get; init; }
 }
 
-/// <summary>Permisos derivados puramente de los roles del JWT — ver docs/03 §4.</summary>
+/// <summary>Permisos derivados puramente de los roles del JWT — ver docs/03 sección 4.</summary>
 public sealed class PermisosDto
 {
     public required bool PuedeEditarAsistencia { get; init; }

@@ -12,7 +12,7 @@ updated: 2026-08-07
 de M3. CI frontend deja de omitirse.
 
 **Architecture:** SPA standalone, signals para estado, servicios por feature,
-interceptor con refresh-once. Reutiliza `docs/03 § 7` (access token en memoria,
+interceptor con refresh-once. Reutiliza `docs/03 sección 7` (access token en memoria,
 refresh en localStorage) y `docs/06` (estructura `core/` + `features/` + `shared/`
 + `layout/`). Consume el backend ya en pie (M1b–M3d, 140 tests verdes).
 
@@ -56,8 +56,8 @@ SCSS, ESLint. Sin SSR. Sin NgRx.
 |---|---|---|
 | Angular Material 21 | Tailwind puro | El doc-lineamiento `06` lo manda como base; el equipo ya lo usa en Bienestar |
 | Sin NgRx | Con NgRx / Signal Store | YAGNI: estado vive en servicios + signals |
-| Access token en memoria | localStorage | `docs/03 § 7` lo manda así (menor superficie XSS) |
-| Refresh en localStorage | Cookie httpOnly | Mientras el backend no emita cookie httpOnly; `docs/03 § 7` lo deja explícito |
+| Access token en memoria | localStorage | `docs/03 sección 7` lo manda así (menor superficie XSS) |
+| Refresh en localStorage | Cookie httpOnly | Mientras el backend no emita cookie httpOnly; `docs/03 sección 7` lo deja explícito |
 | Refresh-once con cola | Lock simple / mutex | Evita tormenta de refreshes en paralelo |
 | `ng-zorro-antd` NO | — | No aplica; Material ya cubre |
 | `@angular-eslint` | TSLint deprecado | Estándar actual |

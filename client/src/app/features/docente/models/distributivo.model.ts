@@ -1,6 +1,6 @@
 /**
  * Fila devuelta por `GET /api/mis-paralelos`.
- * Espejo de `MiParaleloDto` (`docs/04-contrato-api.md` § Docente).
+ * Espejo de `MiParaleloDto` (`docs/04-contrato-api.md` sección Docente).
  */
 export interface MiParaleloDto {
   idAsignacion: number;

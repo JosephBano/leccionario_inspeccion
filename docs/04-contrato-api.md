@@ -152,7 +152,7 @@ período activo" del sistema, existe uno por nivel.
 - Para un docente, la respuesta se limita a los niveles en los que tiene distributivo.
 
 Detalle e implementación en
-[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) § Paso 5.
+[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) sección Paso 5.
 
 ### `GET /api/paralelos/{idAsignacion}/alumnos`
 Roles: `cplec_docente` (solo suyos) · `cplec_inspector` (cualquiera).

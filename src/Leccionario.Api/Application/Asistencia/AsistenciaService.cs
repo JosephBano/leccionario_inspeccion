@@ -9,8 +9,8 @@ namespace Leccionario.Api.Application.Asistencia;
 /// <summary>
 /// Registra marcas de asistencia en una sesión. Idempotente sobre
 /// <c>(idSesion, idMatricula)</c>: reenviar la misma lista produce el mismo
-/// estado. Ver <c>docs/04-contrato-api.md</c> § Asistencia y
-/// <c>docs/07</c> §"Asistencia".
+/// estado. Ver <c>docs/04-contrato-api.md</c> sección Asistencia y
+/// <c>docs/07</c> sección "Asistencia".
 /// </summary>
 public interface IAsistenciaService
 {

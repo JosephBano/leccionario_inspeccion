@@ -8,7 +8,7 @@ namespace Leccionario.Api.Application.Distributivo;
 /// <summary>
 /// Devuelve la nómina de alumnos de un paralelo. El docente pasa por
 /// <c>DistributivoGuard</c>; el inspector lo consulta sin restricción.
-/// Ver <c>docs/04-contrato-api.md</c> § Docente y <c>docs/10</c> § 2.
+/// Ver <c>docs/04-contrato-api.md</c> sección Docente y <c>docs/10</c> sección 2.
 /// </summary>
 public interface INominaAlumnosService
 {

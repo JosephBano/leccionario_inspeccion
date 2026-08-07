@@ -3,7 +3,7 @@ namespace Leccionario.Api.Application.Asistencia.Services;
 /// <summary>
 /// Verifica que un docente (cédula del claim <c>sub</c>) tiene la
 /// <c>idAsignacion</c> solicitada. Pieza central de la autorización de
-/// cplec: ver <c>docs/03 §5.2</c>, <c>docs/05 §"Autorización"</c> y
+/// cplec: ver <c>docs/03 sección 5.2</c>, <c>docs/05 sección "Autorización"</c> y
 /// <c>ADR-007</c>.
 /// </summary>
 /// <remarks>

@@ -72,7 +72,7 @@ WHERE ap.idAsignacion = ?
 devuelve 29–30 alumnos por paralelo; omitiendo `idSeccion` y `idModalidad` devuelve
 75–90. Distintas jornadas reusan la misma letra de paralelo, así que un join reducido
 haría que el docente pasara lista a alumnos de otra jornada. Evidencia en
-[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) § Paso 2.
+[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) sección Paso 2.
 
 > Sobre los tipos: `asignaciones_profesores.paralelo` es `char(1)` y
 > `matriculas.paralelo` es `varchar(10)`. Se verificó que en la carrera 6 todos los
@@ -131,7 +131,7 @@ UNIQUE (idAsignacion, idFecha, numeroBloque)
 - **La fecha debe caer dentro de `asignaciones_profesores.fecha_inicial .. fecha_fin`**.
   No se implementa con `CHECK` (MySQL 5.7 los parsea pero no los aplica, y la regla
   cruza tablas): se valida en `SesionService`. Ver
-  [`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) § Paso 4.
+  [`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) sección Paso 4.
 
 ### `cplec_asistencias` — la marca por estudiante
 

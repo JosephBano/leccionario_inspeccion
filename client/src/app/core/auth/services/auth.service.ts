@@ -22,7 +22,7 @@ import type {
  * Sesión persistida en localStorage (solo el refresh + datos del usuario).
  * El access token NUNCA toca storage — vive en memoria (`accessToken` signal).
  *
- * Razón (`docs/03 § 7`): menor superficie XSS. Si el backend migra a cookie
+ * Razón (`docs/03 sección 7`): menor superficie XSS. Si el backend migra a cookie
  * `HttpOnly`, este servicio cambia y se borra localStorage.
  */
 const REFRESH_KEY = 'cplec.refresh';

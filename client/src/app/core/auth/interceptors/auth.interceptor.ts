@@ -12,7 +12,7 @@ let refreshInFlight = false;
 /**
  * Interceptor de autenticación.
  *
- * Reglas (`docs/03 § 7`):
+ * Reglas (`docs/03 sección 7`):
  *  1. Adjunta `Authorization: Bearer …` solo a peticiones hacia `environment.apiUrl`.
  *  2. Ante `401` (cualquiera), intenta refresh UNA sola vez, encolando las peticiones
  *     concurrentes. Si el refresh falla, limpia la sesión y reenvía el error.

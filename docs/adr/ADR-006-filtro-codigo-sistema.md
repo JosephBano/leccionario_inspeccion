@@ -56,5 +56,5 @@ Además, se requiere un smoke test con `WebApplicationFactory`: emitir un JWT co
 ## Referencias
 
 - [[docs/adr/ADR-003-autenticacion-local-sigafi]] — autenticación local contra `sigafi_es` y secreto compartido.
-- [[docs/03-autenticacion-rbac]] § 5.1 — validación de `codigo_sistema` y capas de autorización.
+- [[docs/03-autenticacion-rbac]] sección 5.1 — validación de `codigo_sistema` y capas de autorización.
 - [[docs/adr/ADR-005-scaffold-arquitectura]] — decisiones generales del scaffold de `Leccionario.Api`.

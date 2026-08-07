@@ -10,10 +10,10 @@ namespace Leccionario.Api.Application.Authenticacion.Auth;
 /// </summary>
 /// <remarks>
 /// <para>Algoritmo: <strong>BCrypt con work factor 12</strong> (no 11 como dice
-/// el SECURITY_GUIDE de Bienestar — el código real usa 12; ver docs/03 §2).</para>
+/// el SECURITY_GUIDE de Bienestar — el código real usa 12; ver docs/03 sección 2).</para>
 /// <para>El <c>GenerarHashCentinela()</c> es 32 bytes aleatorios hasheados con
 /// bcrypt — NUNCA constante. Si fuera constante, una filtración del centinela
-/// permitiría entrar a cualquier cuenta recién creada. Ver docs/03 §2.</para>
+/// permitiría entrar a cualquier cuenta recién creada. Ver docs/03 sección 2.</para>
 /// </remarks>
 public static class PasswordService
 {

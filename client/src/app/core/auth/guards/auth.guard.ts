@@ -8,7 +8,7 @@ import { AuthService } from '@core/auth/services/auth.service';
  * Guard de autenticación: permite entrar si el usuario tiene sesión.
  *
  * UX, NO seguridad — el backend revalida el JWT en cada petición.
- * Ver `docs/06 § Rutas y guards`.
+ * Ver `docs/06 sección Rutas y guards`.
  */
 export const authGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);

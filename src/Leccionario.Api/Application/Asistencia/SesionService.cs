@@ -9,7 +9,7 @@ namespace Leccionario.Api.Application.Asistencia;
 
 /// <summary>
 /// Crea, edita, cierra y reabre sesiones de clase. Ver
-/// <c>docs/04-contrato-api.md</c> § Sesiones y <c>docs/10</c> § 4.
+/// <c>docs/04-contrato-api.md</c> sección Sesiones y <c>docs/10</c> sección 4.
 /// </summary>
 public interface ISesionService
 {

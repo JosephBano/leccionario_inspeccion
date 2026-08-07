@@ -58,7 +58,7 @@ El backend actual no emite cookies. Migrar a `httpOnly` requiere:
   producción preserven la cookie.
 
 Es una mejora clara, pero **no es bloqueante para M4** y se deja explícita
-como evolución en `docs/03 § 7`.
+como evolución en `docs/03 sección 7`.
 
 ## Consecuencias
 
@@ -79,7 +79,7 @@ como evolución en `docs/03 § 7`.
 - **Refresh en `localStorage` sigue siendo legible por JS**, igual que
   cualquier otro frontend que use cookies no-`httpOnly`. La mitigación es que
   el refresh solo sirve para pedir access tokens y la familia se revoca
-  automáticamente ante reuso (`docs/03 § 2`).
+  automáticamente ante reuso (`docs/03 sección 2`).
 
 ### Reversibilidad
 

@@ -66,11 +66,11 @@ Toda ruta es relativa a `src/Leccionario.Api/` salvo donde se indique.
 
 | Ruta | Estado | Origen | Tests | Notas |
 |---|---|---|---|---|
-| `Application/Common/Exceptions/AppException.cs` | NUEVO | docs/05 §"Manejo de errores" | `AppExceptionTests.cs` | Base abstracta con `Codigo` y `HttpStatus` |
+| `Application/Common/Exceptions/AppException.cs` | NUEVO | docs/05 sección "Manejo de errores" | `AppExceptionTests.cs` | Base abstracta con `Codigo` y `HttpStatus` |
 | `Application/Common/Exceptions/ValidacionException.cs` | NUEVO | docs/05 | (en `AppExceptionTests`) | `400 VALIDACION` |
 | `Application/Common/Exceptions/NoEncontradoException.cs` | NUEVO | docs/05 | (en `AppExceptionTests`) | `404 NO_ENCONTRADO` |
 | `Application/Common/Exceptions/ProhibidoException.cs` | NUEVO | docs/05 | (en `AppExceptionTests`) | `403` base |
-| `Application/Common/Exceptions/DistributivoAjenoException.cs` | NUEVO | docs/03 §5 + docs/05 | (en `AppExceptionTests`) | `403 DISTRIBUTIVO_AJENO` |
+| `Application/Common/Exceptions/DistributivoAjenoException.cs` | NUEVO | docs/03 sección 5 + docs/05 | (en `AppExceptionTests`) | `403 DISTRIBUTIVO_AJENO` |
 | `Application/Common/Exceptions/SesionCerradaException.cs` | NUEVO | docs/05 | (en `AppExceptionTests`) | `403 SESION_CERRADA` |
 | `Application/Common/Exceptions/FueraDePlazoException.cs` | NUEVO | docs/05 | (en `AppExceptionTests`) | `403 FUERA_DE_PLAZO` |
 | `Application/Common/Exceptions/ConflictoException.cs` | NUEVO | docs/05 | (en `AppExceptionTests`) | `409` |
@@ -80,17 +80,17 @@ Toda ruta es relativa a `src/Leccionario.Api/` salvo donde se indique.
 | `Application/Authenticacion/Auth/AuthDtos.cs` | Reescrito | **PORT** parcial | (junto a `AuthServiceTests` en auth-login) | Quitar `RegisterStudentDto`, `SistemaAccesoDto`, `LoginResponseDto.Sistemas`. Conservar `LoginDto`, `LoginResponseDto`, `RefreshTokenRequestDto`, `LogoutRequestDto`, `RefreshTokenResponseDto`, `UsuarioDto`, `RolCatalogoDto` |
 | `Application/Authenticacion/Auth/PasswordService.cs` | **PORT verbatim** | Bienestar | `PasswordServiceTests.cs` (portado) | Sin cambios, es estático |
 | `Application/Authenticacion/Auth/CuentaInactivaException.cs` | **PORT verbatim** | Bienestar | (en `AuthServiceTests` en auth-login) | Sin cambios |
-| `Application/Authenticacion/Auth/IRefreshTokenService.cs` | NUEVO (interfaz) | docs/03 §2 | (tests en auth-login) | Definido acá para que DI compile. **No** se incluye impl — depende de `sigafi_esContext` (llega en PR posterior) |
+| `Application/Authenticacion/Auth/IRefreshTokenService.cs` | NUEVO (interfaz) | docs/03 sección 2 | (tests en auth-login) | Definido acá para que DI compile. **No** se incluye impl — depende de `sigafi_esContext` (llega en PR posterior) |
 | `Application/Authenticacion/Auth/IJwtTokenService.cs` | (incluido en `JwtTokenService.cs`) | port | (junto a `JwtTokenServiceTests`) | Mismo archivo, como en Bienestar |
 | `Application/Authenticacion/Auth/IAuthService.cs` | **NO en scaffold** | n/a | n/a | Aparece en `feature/auth-login`. Sin él no se registra nada en DI |
-| `Application/Asistencia/Services/IDistributivoGuard.cs` | NUEVO (interfaz) | docs/03 §5 + decisión (b) | (tests en rbac-distributivo-guard) | `Task<bool> DocenteTieneAsignacionAsync(string idProfesor, int idAsignacion)` |
+| `Application/Asistencia/Services/IDistributivoGuard.cs` | NUEVO (interfaz) | docs/03 sección 5 + decisión (b) | (tests en rbac-distributivo-guard) | `Task<bool> DocenteTieneAsignacionAsync(string idProfesor, int idAsignacion)` |
 
 ### 1.4 Infrastructure
 
 | Ruta | Estado | Origen | Tests | Notas |
 |---|---|---|---|---|
 | `Infrastructure/DbContexts/.gitkeep` | NUEVO | placeholder | n/a | Vacío hasta EF Power Tools |
-| `Infrastructure/DbContexts/DesignTime/sigafi_esContextFactory.cs` | NUEVO | docs/01 §"Capas" + docs/05 | n/a | Factory `IDesignTimeDbContextFactory<sigafi_esContext>` solo para que `dotnet ef`/Power Tools puedan scaffoldear. Sin implementación hasta tener entidades |
+| `Infrastructure/DbContexts/DesignTime/sigafi_esContextFactory.cs` | NUEVO | docs/01 sección "Capas" + docs/05 | n/a | Factory `IDesignTimeDbContextFactory<sigafi_esContext>` solo para que `dotnet ef`/Power Tools puedan scaffoldear. Sin implementación hasta tener entidades |
 
 > **Decisión consciente:** `sigafi_esContext` no existe en el scaffold. Cualquier
 > servicio que dependa de él (RefreshTokenService, AuditMiddleware persistido,
@@ -102,7 +102,7 @@ Toda ruta es relativa a `src/Leccionario.Api/` salvo donde se indique.
 
 | Ruta | Estado | Origen | Tests | Notas |
 |---|---|---|---|---|
-| `Controllers/HealthController.cs` | NUEVO | docs/05 §"Estructura" | `HealthControllerTests.cs` | `GET /api/health` (anónimo), `GET /api/health/db` (verifica conexión, tolera fallo) |
+| `Controllers/HealthController.cs` | NUEVO | docs/05 sección "Estructura" | `HealthControllerTests.cs` | `GET /api/health` (anónimo), `GET /api/health/db` (verifica conexión, tolera fallo) |
 | `Controllers/Auth/AuthController.cs` | **NO en scaffold** | n/a | n/a | Aparece completo en `feature/auth-login` |
 
 ### 1.6 Extensions
@@ -233,7 +233,7 @@ services.AddAuthorization(o =>
 
 **Contexto.** Cualquier endpoint que reciba `idAsignacion` o `idSesion` debe
 verificar que el `idProfesor` del token es el dueño. Es la pieza con más riesgo
-de seguridad del sistema y la que más tests debe tener (docs/07 §"Autorización").
+de seguridad del sistema y la que más tests debe tener (docs/07 sección "Autorización").
 
 **Opciones evaluadas.**
 
@@ -303,7 +303,7 @@ muestra hotspot, pasar a `IMemoryCache` con TTL de 60s por `(idProfesor, idAsign
 ### c) Endpoint `GET /api/auth/me`
 
 **Contexto.** El frontend reconstruye el estado al arrancar. No debe decodificar
-el JWT en cliente (docs/03 §7). El endpoint devuelve el perfil + roles +
+el JWT en cliente (docs/03 sección 7). El endpoint devuelve el perfil + roles +
 paralelos del usuario autenticado.
 
 **Decisión sobre los datos devueltos.**
@@ -359,7 +359,7 @@ token rotación reemitirá los claims correctos.
 
 **Contexto.** Bienestar tiene una jerarquía rica (`EntityNotFoundException`,
 `BusinessRuleException`, `ValidationException`, etc.) con su clasificador.
-docs/05 §"Manejo de errores" propone una jerarquía más simple para cplec.
+docs/05 sección "Manejo de errores" propone una jerarquía más simple para cplec.
 
 **Opciones evaluadas.**
 
@@ -443,7 +443,7 @@ public static string GetCodigo(Exception ex) => ex switch
 
 ### e) Rate limiting en login
 
-**Contexto.** docs/04 §"Rate limiting" exige:
+**Contexto.** docs/04 sección "Rate limiting" exige:
 - `/api/auth/login`: **5 / 5 min por IP**.
 - Reportes con `formato=`: 10 / min por usuario.
 - Resto: 120 / min por usuario.
@@ -570,7 +570,7 @@ estructura que Bienestar.
 
 ### g) Tests In-Memory vs integración
 
-**Contexto.** docs/07 §"Tipos de prueba" define dos tipos: **unitaria**
+**Contexto.** docs/07 sección "Tipos de prueba" define dos tipos: **unitaria**
 (EF InMemory, siempre corre) y **integración** (MySQL real, corre solo si hay
 conexión configurada). El patrón de Bienestar: helper
 `IntegrationTestConnection` que lee env var o `appsettings.IntegrationTests.json`
@@ -635,8 +635,8 @@ public class DistributivoGuardIntegracionTests
 ### 3.1 Cambios a archivos existentes
 
 - `src/Leccionario.sln`: agregar referencias a proyectos (ya existe).
-- `src/Leccionario.Api/Leccionario.Api.csproj`: paquetes (ver §3.2).
-- `src/Leccionario.Api/Program.cs`: rewrite (ver §3.3).
+- `src/Leccionario.Api/Leccionario.Api.csproj`: paquetes (ver sección 3.2).
+- `src/Leccionario.Api/Program.cs`: rewrite (ver sección 3.3).
 - `src/Leccionario.Api/appsettings.json`: agregar `ConnectionStrings`,
   `SistemaCodigo`, `JWTSettings` (estructura, sin secretos), `AllowedOrigins`,
   `Logging` extendido.
@@ -668,7 +668,7 @@ builder.Services
     .AddInfrastructureLayer(builder.Configuration)
     .AddApplicationLayer();
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddRateLimiting(builder.Configuration);  // ver §3.4
+builder.Services.AddRateLimiting(builder.Configuration);  // ver sección 3.4
 builder.Services.AddSwaggerDocumentation();
 builder.Services.AddCorsPolicy(builder.Configuration);
 
@@ -766,12 +766,12 @@ app.Run();
 |---|---|---|---|---|
 | 1 | `feature/scaffold-base` | **A (mecánico)** | Este PR. | Base para todo. |
 | 2 | `feature/ef-powertools-scaffold` | **A (mecánico)** | Scaffolding de entidades desde `sigafi_es` con EF Power Tools. Genera `Domain/Entities/*` (≈80 archivos) y `Infrastructure/DbContexts/sigafi_esContext.cs`. | Desbloquea cualquier service que dependa de entidades. No toca lógica. |
-| 3 | `feature/auth-login` | **B (lógica)** | `AuthService` (port de Bienestar, ajustada: solo `tablaSigafi='profesor'`, sin email/queue). `IAuthService` registrado en DI. `AuthController` con `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`. TDD completo: casos de docs/07 §"Autenticación". `RefreshTokenService` impl real (ahora con DbContext disponible). | Es la pieza más crítica y la que más reglas de seguridad tiene. TDD estricto. |
+| 3 | `feature/auth-login` | **B (lógica)** | `AuthService` (port de Bienestar, ajustada: solo `tablaSigafi='profesor'`, sin email/queue). `IAuthService` registrado en DI. `AuthController` con `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`. TDD completo: casos de docs/07 sección "Autenticación". `RefreshTokenService` impl real (ahora con DbContext disponible). | Es la pieza más crítica y la que más reglas de seguridad tiene. TDD estricto. |
 | 4 | `feature/rbac-distributivo-guard` | **B (lógica)** | `SistemaClaimAuthorizationHandler` (si no entró en scaffold). `DistributivoGuard` real. Tests del guard (unit + integration). Wiring en DI. | Bloquea el endpoint `/me` y todos los de asistencia. |
 | 5 | `feature/auth-me` | **B (lógica)** | `GET /api/auth/me` + service. DTO `MiPerfilDto`. Query con el `DistributivoGuard` para listar paralelos del docente. | Depende del guard (para docente) y del AuthService (para usuario + roles). |
 | 6 | `feature/distributivo-periodos` | **B (lógica)** | `GET /api/mis-paralelos`, `GET /api/periodos/por-nivel`, `GET /api/paralelos/{id}/alumnos`. Toda query con `AsNoTracking()` y proyecciones a DTO. | Lee distributivo. Sin escrituras. Se puede testear 100% con InMemory. |
 | 7 | `feature/asistencia-sesiones` | **B (lógica)** | CRUD de sesiones: `POST /api/paralelos/{id}/sesiones`, `GET /api/sesiones/{id}`, `PUT`, cerrar/reabrir. Transacciones + historial. | Empieza a escribir. Aquí aparece `IAsistenciaRepository`. |
-| 8 | `feature/asistencia-marcas` | **B (lógica)** | `POST /api/sesiones/{id}/asistencias` (idempotente), `GET /api/asistencias/historial/{id}`. Validaciones de docs/04 §"Asistencia" en orden. | El feature más sensible: reenvíos, constraints UNIQUE, ventana de edición. |
+| 8 | `feature/asistencia-marcas` | **B (lógica)** | `POST /api/sesiones/{id}/asistencias` (idempotente), `GET /api/asistencias/historial/{id}`. Validaciones de docs/04 sección "Asistencia" en orden. | El feature más sensible: reenvíos, constraints UNIQUE, ventana de edición. |
 | 9 | `feature/reportes-core` | **B (lógica)** | Reportes JSON (`por-paralelo`, `por-estudiante`, `por-docente`, `resumen`). | Lectura pura, sin riesgo de escritura. |
 | 10 | `feature/reportes-descarga` | **B (lógica)** | `?formato=xlsx` / `?formato=pdf` con ClosedXML + generador PDF. Rate limit `reportes` aplica acá. | Introduce el primer download binario — necesita tests de integración del Content-Type y Content-Disposition. |
 
@@ -855,7 +855,7 @@ Notas:
    la pregunta queda abierta para v2.
 
 4. **`matriculas_asistencias` (legacy) tiene 6018 filas. ¿Se migran a
-   `cplec_asistencias`?** docs/03 §"Modelo de datos" dice que no se toca. Pero
+   `cplec_asistencias`?** docs/03 sección "Modelo de datos" dice que no se toca. Pero
    ¿qué pasa con un docente que quiere ver la lista de julio (que ya estaba en
    legacy)? ¿O el reporte del inspector arranca en 2026-08-06? Confirmar con
    inspección el alcance temporal mínimo de los reportes.
@@ -899,8 +899,8 @@ Notas:
 > diseño (mínimo: `ADR-005-scaffold-arquitectura.md` con el resumen de
 > decisiones a-g, y `ADR-006-filtro-codigo-sistema.md` con la justificación
 > del fallback policy). Después: `@implementer` para `feature/scaffold-base`
-> siguiendo el plan de §3.
+> siguiendo el plan de sección 3.
 
 > **Handoff (alternativo):** si querés saltarte la formalización de ADRs y
 > ir directo a código, el siguiente agente es `@implementer` con la orden de
-> ejecutar el plan de §3 al pie de la letra.
+> ejecutar el plan de sección 3 al pie de la letra.

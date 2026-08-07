@@ -18,7 +18,7 @@ import { DistributivoService } from '@features/docente/services/distributivo.ser
  * Mantiene una copia mutable del estado de cada alumno. La fuente de verdad
  * sigue siendo el backend; aquí solo se trackean los cambios pendientes.
  *
- * Reglas (`docs/06 § Pantalla crítica`):
+ * Reglas (`docs/06 sección Pantalla crítica`):
  *  - Todos arrancan en `presente`.
  *  - Un toque rota el estado (presente → ausente → atraso → justificado → presente).
  *  - Guardado explícito con un botón: una sola petición idempotente con toda la lista.

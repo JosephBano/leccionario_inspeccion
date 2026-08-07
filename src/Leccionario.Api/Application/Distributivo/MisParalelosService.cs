@@ -5,8 +5,8 @@ namespace Leccionario.Api.Application.Distributivo;
 
 /// <summary>
 /// Lista los paralelos del distributivo de un docente. Ver
-/// <c>docs/04-contrato-api.md</c> § Docente / <c>/api/mis-paralelos</c> y
-/// <c>docs/10</c> § 1.
+/// <c>docs/04-contrato-api.md</c> sección Docente / <c>/api/mis-paralelos</c> y
+/// <c>docs/10</c> sección 1.
 /// </summary>
 public interface IMisParalelosService
 {
@@ -92,7 +92,7 @@ public sealed class MisParalelosService : IMisParalelosService
         if (asignaciones.Count == 0)
             return Array.Empty<MiParaleloDto>();
 
-        // Paso 2: conteo de matrículas activas por tupla de 5 columnas (per docs/10 § 2).
+        // Paso 2: conteo de matrículas activas por tupla de 5 columnas (per docs/10 sección 2).
         var idsAsignacion = asignaciones.Select(a => a.idAsignacion).ToList();
         var asignacionesPorId = await _db.asignaciones_profesores
             .AsNoTracking()

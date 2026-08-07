@@ -3,7 +3,7 @@ namespace Leccionario.Api.Application.Common.Exceptions;
 /// <summary>
 /// Base de todas las excepciones de aplicación de cplec.
 /// Lleva el código de error y el HTTP status que el <c>ExceptionClassifier</c>
-/// propaga al JSON de respuesta (ver docs/04 §"Contrato de error").
+/// propaga al JSON de respuesta (ver docs/04 sección "Contrato de error").
 /// </summary>
 /// <remarks>
 /// <para>Las subclases concretas fijan <see cref="Codigo"/> y <see cref="HttpStatus"/>

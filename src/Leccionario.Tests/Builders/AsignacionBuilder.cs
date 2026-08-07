@@ -5,7 +5,7 @@ namespace Leccionario.Tests.Builders;
 /// <summary>
 /// Builder fluido para <see cref="asignaciones_profesores"/>. Permite declarar
 /// solo los campos relevantes en cada test sin repetir código de setup.
-/// Patrón de docs/07 §"Builders".
+/// Patrón de docs/07 sección "Builders".
 /// </summary>
 /// <remarks>
 /// IDs ficticios y rangos plausibles pero reconocibles (0000000001…). No usar

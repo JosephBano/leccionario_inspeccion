@@ -2,7 +2,7 @@ namespace Leccionario.Api.Application.Common.Exceptions;
 
 /// <summary>
 /// 403 DISTRIBUTIVO_AJENO — el docente autenticado no es dueño de la
-/// <c>idAsignacion</c> solicitada. Ver docs/03 §5.2 y docs/05 §"Autorización".
+/// <c>idAsignacion</c> solicitada. Ver docs/03 sección 5.2 y docs/05 sección "Autorización".
 /// </summary>
 /// <remarks>
 /// <para>Se lanza desde un <em>service</em> (no desde el controller) después de

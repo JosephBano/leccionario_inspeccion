@@ -11,7 +11,7 @@ namespace Leccionario.Api.Application.Authenticacion.Auth;
 /// Implementación de <see cref="IRefreshTokenService"/>. Adapta la lógica de
 /// rotación + detección de reuso de
 /// <c>BienestarInstitucional.Api/.../RefreshTokenService.cs</c> al contrato
-/// propio de cplec (ver docs/superpowers/specs/2026-08-06-auth-login-design.md §2).
+/// propio de cplec (ver docs/superpowers/specs/2026-08-06-auth-login-design.md sección 2).
 /// </summary>
 public sealed class RefreshTokenService : IRefreshTokenService
 {

@@ -14,7 +14,7 @@ namespace Leccionario.Api.Application.Auth.Authorization;
 /// <c>context.Succeed</c>; eso es un <c>Fail</c> implícito que el pipeline de
 /// autorización traduce a 403. Si la verificación misma lanza una excepción
 /// (bug), el pipeline responde 500: un fallo de seguridad no es un éxito
-/// silencioso. Ver ADR-006 §"Consecuencias positivas".</para>
+/// silencioso. Ver ADR-006 sección "Consecuencias positivas".</para>
 /// </remarks>
 public sealed class SistemaClaimAuthorizationHandler
     : AuthorizationHandler<SistemaClaimRequirement>

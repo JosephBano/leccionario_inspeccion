@@ -5,7 +5,7 @@ namespace Leccionario.Api.Application.Distributivo;
 
 /// <summary>
 /// Resuelve el período más reciente por cada nivel (tipo de licencia) de la
-/// carrera 6. Ver <c>docs/04-contrato-api.md</c> § Docente y <c>docs/10</c> § 5.
+/// carrera 6. Ver <c>docs/04-contrato-api.md</c> sección Docente y <c>docs/10</c> sección 5.
 /// </summary>
 /// <remarks>
 /// Implementación en dos pasos (per docs/10):

@@ -12,7 +12,7 @@ namespace Leccionario.Api.Middlewares;
 /// ajustado al clasificador propio de cplec.
 /// </summary>
 /// <remarks>
-/// <para>Contrato de error (ver docs/04 §"Contrato de error"):</para>
+/// <para>Contrato de error (ver docs/04 sección "Contrato de error"):</para>
 /// <code>
 /// {
 ///   "codigo":    "DISTRIBUTIVO_AJENO",

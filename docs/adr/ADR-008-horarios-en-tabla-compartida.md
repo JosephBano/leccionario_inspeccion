@@ -133,7 +133,7 @@ independientes:
 
 Se validan tres conflictos: **docente** (mismo `idProfesor` vía join a
 `asignaciones_profesores`), **paralelo** (misma 5-tupla) y **asignación duplicada**.
-Espacio no aplica (§4).
+Espacio no aplica (sección 4).
 
 #### Bloqueante vs. advertencia
 
@@ -172,15 +172,15 @@ La migración 005 agrega a `cplec_sesiones`:
 | `idHorarioInicio` INT NULL, FK `horario_detalle` | **Identidad real del bloque** |
 | `franjasPlanificadas` TINYINT NULL | Cuántas franjas cubre |
 | `minutosPlanificados` SMALLINT NULL | Suma de `horas_clases.minutos` — con franjas de duración libre, contar franjas miente |
-| `esTardia` TINYINT(1) NOT NULL DEFAULT 0 | §8 |
-| `diasRetraso` SMALLINT NOT NULL DEFAULT 0 | §8 |
+| `esTardia` TINYINT(1) NOT NULL DEFAULT 0 | sección 8 |
+| `diasRetraso` SMALLINT NOT NULL DEFAULT 0 | sección 8 |
 
 `numeroBloque` se calcula al crear y **no se recalcula nunca**. Si el inspector agrega
 después una franja a las 06:00, el orden de los bloques cambiaría y desalinearía sesiones
 ya guardadas. La identidad estable es `idHorarioInicio`; `numeroBloque` se conserva porque
 forma parte del `UNIQUE` existente.
 
-`idHorarioInicio` es NULL-able a propósito: ver §9.
+`idHorarioInicio` es NULL-able a propósito: ver sección 9.
 
 ### 8. Registro tardío: sin límite, marcado y visible
 
@@ -233,7 +233,7 @@ recuperación pedagógica, feriados / `fecha_config`, espacios y drag-and-drop e
 - **Dos aplicaciones escriben la misma tabla legacy.** Mitigado por la frontera de
   carrera 6, la de `tipo='Z'` y el aislamiento `Serializable`, pero el riesgo no es cero
   y no lo controlamos por completo.
-- **La unicidad puede quedar sin respaldo de la BD** (§4). Vive en la aplicación, así que
+- **La unicidad puede quedar sin respaldo de la BD** (sección 4). Vive en la aplicación, así que
   un `INSERT` manual por SQL se la salta.
 - **La correctitud del solapamiento es 100 % aplicación**, sin red de la base.
 - **Dependemos del soft-delete ajeno.** La FK `cplec_sesiones.idHorarioInicio` asume que
@@ -252,7 +252,7 @@ recuperación pedagógica, feriados / `fecha_config`, espacios y drag-and-drop e
 | Tabla propia `cplec_horarios` | Pierde por construcción el choque de docente contra otras carreras, que es la razón principal de hacer esto |
 | Leer la compartida, escribir en propia | Conserva la detección pero deja el horario de `cplec` invisible para el resto, y duplica el modelo sin ganar nada |
 | `ALTER TABLE horario_detalle` (columnas de `cplec`) | Prohibido: tabla compartida en producción con otros sistemas |
-| Conflicto por `idhora` igual | No detecta nada fuera de las franjas Z, y **ni siquiera protege dentro de `cplec`** con franjas de duración libre (§5) |
+| Conflicto por `idhora` igual | No detecta nada fuera de las franjas Z, y **ni siquiera protege dentro de `cplec`** con franjas de duración libre (sección 5) |
 | Reutilizar franjas `tipo='X'` | Son del instituto; editarlas afecta a `gestion_academica` |
 | Sesión por franja (una lista por hora) | El docente pasaría 4 listas en un día de 4 horas; obliga a rehacer `SesionService` y su UI sin beneficio operativo |
 | Horario que solo habilita el día, sin anclaje | El inspector no podría auditar horas dictadas ni saber a qué bloque corresponde la lista |
