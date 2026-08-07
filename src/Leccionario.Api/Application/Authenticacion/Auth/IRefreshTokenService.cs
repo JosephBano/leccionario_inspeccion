@@ -40,3 +40,11 @@ public interface IRefreshTokenService
     /// <summary>Revoca el refresh token de un usuario (logout).</summary>
     Task RevokeAsync(string token, string reason, CancellationToken ct = default);
 }
+
+/// <summary>Valores válidos para el parámetro <c>reason</c> de <c>RevokeAsync</c> y para <c>rbac_refresh_tokens.revokedReason</c>.</summary>
+public static class RefreshTokenRevokedReason
+{
+    public const string Rotation = "Rotation";
+    public const string Logout = "Logout";
+    public const string ReuseDetected = "ReuseDetected";
+}
