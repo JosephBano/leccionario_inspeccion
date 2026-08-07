@@ -92,9 +92,19 @@ día ese sistema empieza a cargar horarios de la carrera 6, hay que revisar este
 
 `tipo = 'X'` es del instituto y lo gestiona `gestion_academica`
 ([su ADR-0015](../../../../digitalizacion-istpet/gestion_academica_istpet/docs/decisions/ADR-0015-tipo-franja-x-legado-i.md)).
-`tipo = 'I'` es legacy. El resto de valores presentes en la tabla no están documentados y
-se desconoce su origen. `cplec` **no crea, no edita ni desactiva** ninguna franja que no
-sea `'Z'`; sí las lee para detectar conflictos. Se implementa como `FranjaZGuard`.
+`tipo = 'I'` es legacy. `cplec` **no crea, no edita ni desactiva** ninguna franja que no
+sea `'Z'`; sí las lee todas para detectar conflictos. Se implementa como `FranjaZGuard`.
+
+La verificación del 2026-08-07 confirmó que `tipo` es `char(1)` sin `ENUM` ni `CHECK` —
+`'Z'` se puede usar— y que los tipos existentes son `C` (54 filas), `I` (7) y `X` (11).
+
+Hallazgo no previsto: **la carrera 6 ya tiene franjas de tipo `'C'`**, segmentadas por
+`idSeccion`, que en esta carrera es la jornada — y con horas distintas por jornada. `'C'`
+aparece también en las carreras 1, 2, 4, 7, 8, 9 y 10, así que es la convención de otro
+sistema y no un catálogo propio de la escuela de conducción. Se mantiene crear franjas
+`'Z'` con `idSeccion` NULL: el catálogo queda plano y el inspector elige la franja
+correcta en el grid. El costo es cosmético (un paralelo matutino ve también las franjas
+nocturnas) y poblar `idSeccion` después es aditivo.
 
 ### 4. Sin espacios
 
@@ -102,10 +112,9 @@ sea `'Z'`; sí las lee para detectar conflictos. Se implementa como `FranjaZGuar
 sistema. No es un pendiente de implementación: es el comportamiento definido. Si algún día
 lo piden, es aditivo.
 
-Esto tiene una consecuencia técnica que hay que tener presente: si el índice único de
-`horario_detalle` incluye `idEspacio`, en MySQL `NULL != NULL` para índices únicos, de
-modo que **la base de datos no impide filas duplicadas** y la unicidad queda enteramente
-a cargo de la aplicación.
+Se había anotado acá una preocupación por `NULL != NULL` en índices únicos de MySQL. La
+verificación contra la base (2026-08-07) la dejó sin objeto por una razón peor: ver la
+sección 6.
 
 ### 5. Conflictos por solapamiento de horas, no por `idhora`
 
@@ -114,8 +123,8 @@ Un conflicto es un **solape de rangos horarios** en la misma fecha, no una igual
 
 ```
 choque(a, b) ⇔ a.idFecha = b.idFecha
-              ∧ a.horaInicio < b.horaFin
-              ∧ b.horaInicio < a.horaFin
+              ∧ a.hora_inicio < b.hora_fin
+              ∧ b.hora_inicio < a.hora_fin
 ```
 
 Bordes que se tocan (`09:00–10:00` vs `10:00–11:00`) **no** chocan.
@@ -147,12 +156,32 @@ confirma, y la fila queda listada en su reporte.
 
 ### 6. TOCTOU: `Serializable` + retry, sin cambios de esquema
 
-El solapamiento no se puede expresar como constraint en MySQL 5.7 (no hay exclusion
-constraints), así que la correctitud vive en la aplicación. Se adopta la misma solución
-que `gestion_academica` en su ADR-0014: transacción con `IsolationLevel.Serializable` de
-alcance corto (validar + escribir) y retry de 3 intentos ante deadlock (error 1213). Los
-locks de InnoDB son del motor, así que esto también protege contra `gestion_academica`
+**Verificado contra la base el 2026-08-07: `horario_detalle` no tiene ningún índice
+único.** Solo `PRIMARY KEY (idHorario)` y cinco `KEY` no únicas. Las dos fuentes
+documentales que teníamos estaban equivocadas: ADR-001 de este repo afirmaba un `UNIQUE
+(activo, idEspacio, idAsignacion, idFecha, idhora)` y el ADR-0012 de `gestion_academica`
+afirmaba `UNIQUE (idAsignacion, idFecha, idhora)`. No existe ninguno de los dos.
+
+Esto agrava el problema en vez de simplificarlo. No es solo que el solapamiento no se
+pueda expresar como constraint en MySQL 5.7 (no hay exclusion constraints): **tampoco hay
+respaldo para el duplicado exacto**. La base no aporta nada. Toda la correctitud vive en
+la aplicación.
+
+Se adopta la misma solución que `gestion_academica` en su ADR-0014: transacción con
+`IsolationLevel.Serializable` de alcance corto (validar + escribir) y retry de 3 intentos
+ante deadlock (error 1213).
+
+Cómo protege realmente, que conviene entender antes de tocar ese código: bajo
+`Serializable`, InnoDB toma next-key locks sobre el rango leído de
+`ix_horario_detalle_fecha_hora_activo`. Dos escrituras concurrentes de la misma celda se
+bloquean mutuamente, una muere con 1213, y el retry la reintenta viendo ya la fila de la
+otra. **El retry no es una mejora de robustez: es el mecanismo.** Sin él hay duplicados.
+Los locks son del motor, así que esto también protege contra `gestion_academica`
 escribiendo de forma concurrente.
+
+No se crea un índice único sobre `horario_detalle`. Sería un cambio estructural sobre una
+tabla compartida con ~1 658 filas de otros sistemas, podría fallar por duplicados
+preexistentes ajenos, y la decisión le corresponde a quien gobierna la tabla, no a `cplec`.
 
 Se descarta desnormalizar `idProfesor` en `horario_detalle` con triggers (lo que su
 ADR-0012 propuso y su ADR-0014 revirtió): exige `ALTER TABLE` y un trigger sobre
@@ -162,7 +191,7 @@ ADR-0012 propuso y su ADR-0014 revirtió): exige `ALTER TABLE` y un trigger sobr
 
 `cplec_sesiones` **no cambia de grano**. Lo que cambia es que se ancla al horario. Un
 bloque es una corrida de franjas contiguas de la misma asignación en el mismo día:
-`franja[i].horaFin == franja[i+1].horaInicio`. Si el horario del día está partido en
+`franja[i].hora_fin == franja[i+1].hora_inicio`. Si el horario del día está partido en
 mañana y tarde, salen dos bloques y dos sesiones.
 
 La migración 005 agrega a `cplec_sesiones`:
@@ -233,17 +262,20 @@ recuperación pedagógica, feriados / `fecha_config`, espacios y drag-and-drop e
 - **Dos aplicaciones escriben la misma tabla legacy.** Mitigado por la frontera de
   carrera 6, la de `tipo='Z'` y el aislamiento `Serializable`, pero el riesgo no es cero
   y no lo controlamos por completo.
-- **La unicidad puede quedar sin respaldo de la BD** (sección 4). Vive en la aplicación, así que
-  un `INSERT` manual por SQL se la salta.
-- **La correctitud del solapamiento es 100 % aplicación**, sin red de la base.
+- **Ni la unicidad ni el solapamiento tienen respaldo de la BD** (sección 6): `horario_detalle`
+  no tiene ningún índice único. Todo vive en la aplicación, así que un `INSERT` manual por
+  SQL se lo salta por completo, y un bug en el retry produce duplicados silenciosos.
+  Es la consecuencia más seria de este ADR.
 - **Dependemos del soft-delete ajeno.** La FK `cplec_sesiones.idHorarioInicio` asume que
   nadie borra físicamente filas de `horario_detalle`. `gestion_academica` usa soft delete
   (su ADR-008) y `cplec` también, pero es una política, no una garantía del motor.
 - La advertencia Z↔otro tipo no bloquea: un conflicto real puede persistirse. Es
   deliberado, y por eso queda en el reporte.
-- `fechas_horarios` se alimenta por fuera. Un día del rango sin fila de calendario no puede
-  planificarse ni registrarse; la replicación lo reporta día por día en vez de fallar el
-  lote entero.
+- `fechas_horarios` se alimenta por fuera. Hoy está completo y sin huecos, pero **termina
+  el 2026-12-31**: un período que cruce a 2027 no se puede planificar ni registrar hasta
+  que alguien cargue esas fechas. Es una dependencia operativa que `cplec` no controla. La
+  replicación reporta el día faltante en vez de fallar el lote entero, pero degradar de
+  forma legible no es lo mismo que resolverlo.
 
 ## Alternativas descartadas
 

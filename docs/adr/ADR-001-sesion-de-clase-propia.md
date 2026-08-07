@@ -14,6 +14,14 @@
 > contiguo de ese horario vía `cplec_sesiones.idHorarioInicio`. La alternativa descartada
 > más abajo —"poblar `horario_detalle` con sesiones sintéticas"— sigue descartada: lo que
 > se escribe ahí es **planificación**, no sesiones dictadas.
+>
+> **Corrección de un dato.** Más abajo este ADR afirma que `horario_detalle` tiene un
+> `UNIQUE (activo, idEspacio, idAsignacion, idFecha, idhora)`. **Es falso.** El
+> `SHOW CREATE TABLE` del 2026-08-07 muestra solo `PRIMARY KEY (idHorario)` y cinco `KEY`
+> no únicas. La tabla no tiene ningún índice único. Esto no cambia la conclusión de
+> ADR-001 —seguía siendo correcto no colgar la asistencia de una tabla vacía para la
+> carrera 6— pero el argumento del `UNIQUE` no se sostiene, y quien lea el documento no
+> debe apoyarse en él.
 
 ## Contexto
 
