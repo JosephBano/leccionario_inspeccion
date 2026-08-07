@@ -162,8 +162,8 @@ Evita 30 líneas de setup por test y hace evidente qué distingue a cada caso.
 ## Antes de abrir un PR
 
 ```bash
-cd Backend  && dotnet test
-cd Frontend && npm test && npm run lint && npm run build
+cd src    && dotnet test
+cd client && npm test && npm run lint && npm run build   # cuando client/ exista (M4)
 ```
 
 El hook `pre-push` corre lo mismo. No se sube nada en rojo, y **no se usa

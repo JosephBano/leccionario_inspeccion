@@ -5,7 +5,7 @@
 ## Estructura de la solución
 
 ```
-Backend/
+src/
 ├── Leccionario.sln
 ├── Leccionario.Api/
 │   ├── Domain/Entities/          ← generado, plano
@@ -19,6 +19,8 @@ Backend/
 │   └── appsettings.Development.json  ← con secretos, EN .gitignore
 └── Leccionario.Tests/
 ```
+
+> Path canónico: `src/`. Ver [`docs/00-roadmap.md`](../00-roadmap.md) § 4.
 
 `Program.cs` se mantiene delgado: todo el cableado vive en `Extensions/`.
 

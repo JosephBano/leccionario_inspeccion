@@ -75,9 +75,18 @@ Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) § 5.
 
 ```bash
 ./scripts/setup-hooks.sh                    # una vez por clon
-cd Backend  && dotnet test
-cd Frontend && npm test && npm run lint && npm run build
+cd src    && dotnet test                    # 140 tests backend
+cd client && npm test && npm run lint && npm run build   # 24 tests frontend + lint + build
 ```
+
+## Frontend (Angular 21)
+
+- `client/` scaffoldeado con Angular 21 (standalone, signals, Vitest, Material).
+- Aliases: `@core/*`, `@features/*`, `@shared/*`, `@layout/*`, `@env/*`.
+- Access token en memoria (signal), refresh token en `localStorage`.
+- Interceptor con refresh-once (single-flight) y guardia contra bucles.
+- Manejo de errores por `codigo` (ver `docs/04 § Formato de error`), nunca por `mensaje`.
+- Regla de import: `core/` y `shared/` **nunca** importan de `features/`.
 
 ## Referencia externa
 
@@ -90,14 +99,19 @@ estado `activo` se valida **después** de la credencial, y por qué el mensaje d
 
 ## Estado actual
 
-- Documentación, gobernanza de git y scripts SQL: listos.
+> El roadmap consolidado vive en [`docs/00-roadmap.md`](docs/00-roadmap.md). Esta
+> sección es solo un resumen ejecutivo.
+
+- Documentación, gobernanza de git, scripts SQL y RBAC seed: listos.
+- Backend scaffoldeado en `src/`. M3 completo: auth + DistributivoGuard +
+  endpoints de distributivo + sesiones + asistencia + perfil. **140 tests verdes**.
 - **Migraciones 001–003 aplicadas en desarrollo** (2026-08-06). Las tablas
   `cplec_sesiones`, `cplec_asistencias` y `cplec_asistencias_historial` existen y
   están vacías. El sistema `cplec` y los dos roles están en el RBAC.
-- **Falta asignar los roles a personas** —
-  `database/queries/asignar-roles-cplec.sql`. Sin eso nadie puede entrar.
+- **Roles asignados a personas** (2026-08-07). Un docente y un inspector
+  hacen login contra el backend.
+- Frontend scaffoldeado en `client/` (Angular 21). Login funcional con refresh;
+  mis paralelos; pasar lista ligada a M3. **24 tests frontend verdes**.
 - Producción: sin aplicar.
-- Backend y frontend: **sin scaffoldear todavía**. Lo siguiente es el login
-  (`docs/03`) y la pantalla de pasar lista (`docs/06`).
 
 Para correr o revertir un `.sql`: `database/migrations/README.md`.

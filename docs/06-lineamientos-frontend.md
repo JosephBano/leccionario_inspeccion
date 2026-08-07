@@ -2,16 +2,29 @@
 
 ---
 
-## Creación del proyecto
+## Creación del proyecto (M4, hecho)
 
 ```bash
-ng new Frontend --standalone --routing --style=scss --ssr=false --skip-tests
-cd Frontend
-ng add @angular/material
-npm i -D vitest jsdom @analogjs/vite-plugin-angular
+# El frontend vive en client/ (raíz del repo), no en Frontend/.
+# Angular 21 ya usa Vitest por defecto; Material 21 se instala por npm.
+ng new client --standalone --routing --style=scss --ssr=false \
+  --test-runner=vitest --package-manager=npm --skip-git --commit=false
+cd client
+npm i @angular/material@^21 @angular/cdk@^21 @angular/animations@^21
+npm i -D @angular-eslint/builder@^21 @angular-eslint/eslint-plugin@^21 \
+          @angular-eslint/eslint-plugin-template@^21 @angular-eslint/schematics@^21 \
+          @angular-eslint/template-parser@^21 \
+          @typescript-eslint/eslint-plugin@^8 @typescript-eslint/parser@^8 \
+          eslint@^9 typescript-eslint@^8
 ```
 
 Sin SSR: es un portal interno detrás de login, no necesita SEO ni hidratación.
+
+Vitest se invoca vía el builder del CLI Angular
+(`@angular/build:unit-test`). El polyfill de `localStorage` vive en
+`src/test-setup.ts` (lo necesita jsdom v28 por su `--localstorage-file`
+experimental). Aliases (`@core/*`, `@features/*`, `@shared/*`, `@layout/*`,
+`@env/*`) viven en `tsconfig.json` `compilerOptions.paths`.
 
 ---
 

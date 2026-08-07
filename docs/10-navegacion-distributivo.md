@@ -88,6 +88,14 @@ Resultado real para el docente `1716547896` en `OCC2025`:
 
 Esa tabla **es** la pantalla de inicio del docente.
 
+> **Ventana de visibilidad (`MisParalelosService`).** El listado no muestra
+> todo el distributivo activo: solo asignaciones donde
+> `fecha_inicial <= hoy <= fecha_fin + 15 días`. El margen de 15 días permite
+> que el docente siga viendo (y registrando/editando dentro de la ventana de
+> edición de 72h) un paralelo recién cerrado. Pasados los 15 días, desaparece
+> de `/api/mis-paralelos` aunque `ap.activo` siga en 1 — no confundir con la
+> ventana de fechas de sesión del Paso 4 (esa es estricta, sin margen).
+
 ---
 
 ## Paso 2 — Los alumnos de un paralelo

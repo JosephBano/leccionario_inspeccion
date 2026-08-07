@@ -31,26 +31,28 @@ Código de sistema en RBAC: **`cplec`**.
 
 ```text
 leccionario_inspeccion/
-├── Backend/
-│   ├── Leccionario.Api/            # Web API (Clean Architecture por capas)
-│   │   ├── Domain/Entities/        # PLANO — generado por EF Core Power Tools
+├── src/
+│   ├── Leccionario.Api/             # Web API (Clean Architecture por capas)
+│   │   ├── Domain/Entities/         # PLANO — generado por EF Core Power Tools
 │   │   ├── Application/            # Casos de uso, DTOs, interfaces
 │   │   ├── Infrastructure/         # DbContext, repos, servicios externos
-│   │   ├── Controllers/            # Endpoints HTTP
-│   │   ├── Extensions/             # DI, JWT, CORS, Swagger
-│   │   └── Middlewares/            # Excepciones, auditoría, headers, rate limit
-│   ├── Leccionario.Tests/          # Unitarias + integración
+│   │   ├── Controllers/             # Endpoints HTTP
+│   │   ├── Extensions/              # DI, JWT, CORS, Swagger
+│   │   └── Middlewares/             # Excepciones, auditoría, headers, rate limit
+│   ├── Leccionario.Tests/           # Unitarias + integración
 │   └── Leccionario.sln
-├── Frontend/                       # Angular 21 (core / features / shared / layout)
+├── client/                          # Angular 21 — login, mis paralelos, pasar lista (M4)
 ├── database/
-│   ├── migrations/                 # DDL versionado, replicable en producción (MySQL 5.7)
-│   │   └── README.md               #   ↳ paso a paso para ejecutar y hacer rollback
-│   ├── rollback/                   # Un rollback por cada migración
-│   └── queries/                    # Consultas de verificación/diagnóstico
-├── docs/                           # Documentación y lineamientos (leer antes de codear)
-├── .githooks/                      # Hooks que bloquean commits/pushes que rompen reglas
-└── scripts/                        # Utilidades de desarrollo
+│   ├── migrations/                  # DDL versionado, replicable en producción (MySQL 5.7)
+│   │   └── README.md                #   ↳ paso a paso para ejecutar y hacer rollback
+│   ├── rollback/                    # Un rollback por cada migración
+│   └── queries/                     # Consultas de verificación/diagnóstico
+├── docs/                            # Documentación y lineamientos (leer antes de codear)
+├── .githooks/                       # Hooks que bloquean commits/pushes que rompen reglas
+└── scripts/                         # Utilidades de desarrollo
 ```
+
+El estado y la secuencia de entrega están en [`docs/00-roadmap.md`](docs/00-roadmap.md).
 
 ---
 
@@ -58,7 +60,8 @@ leccionario_inspeccion/
 
 | # | Documento | Para qué |
 |---|---|---|
-| 00 | [Visión y alcance](docs/00-vision-alcance.md) | Qué se construye y qué **no** |
+| 00 | [Roadmap](docs/00-roadmap.md) | Estado actual, hitos, dependencias y próximos pasos |
+| 01 | [Visión y alcance](docs/00-vision-alcance.md) | Qué se construye y qué **no** |
 | 01 | [Arquitectura](docs/01-arquitectura.md) | Client–server, capas, reglas de dependencia |
 | 02 | [Modelo de datos](docs/02-modelo-datos.md) | Tablas legacy reutilizadas y tablas nuevas `cplec_*` |
 | 03 | [Autenticación y RBAC](docs/03-autenticacion-rbac.md) | Login, JWT, roles `cplec_inspector` / `cplec_docente` |
@@ -84,12 +87,17 @@ git checkout dv_jb
 ./scripts/setup-hooks.sh
 
 # 3. Backend
-cp Backend/Leccionario.Api/appsettings.example.json Backend/Leccionario.Api/appsettings.Development.json
+cp src/Leccionario.Api/appsettings.example.json src/Leccionario.Api/appsettings.Development.json
 # editar credenciales reales (ver docs/03) — este archivo NUNCA se commitea
-cd Backend && dotnet restore && dotnet test && dotnet run --project Leccionario.Api
+cd src && dotnet restore && dotnet test && dotnet run --project Leccionario.Api
 
 # 4. Frontend
-cd Frontend && npm ci && npm test && npm start
+cd ../client
+npm ci
+npm test          # 24 tests
+npm run lint      # ESLint + Angular ESLint
+npm run build     # build de producción, sin warnings
+npm start         # ng serve, con proxy /api → http://localhost:5093
 ```
 
 ---
