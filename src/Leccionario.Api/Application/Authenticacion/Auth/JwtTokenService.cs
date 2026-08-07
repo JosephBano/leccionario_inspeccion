@@ -30,7 +30,7 @@ public sealed class JwtTokenClaims
     public required string Nombre { get; init; }                // → claim "nombre"
     public string? Email { get; init; }                         // → claim "email"
     public required string TipoUsuario { get; init; }           // → claim "tipo_usuario" (alumno/profesor/otros)
-    public required IReadOnlyList<string> Roles { get; init; }  // → un ClaimTypes.Role por cada uno + "codigo_rol" con el primero
+    public required IReadOnlyList<string> Roles { get; init; }  // → un claim "role" por cada uno + "codigo_rol" con el primero
     public required string CodigoSistema { get; init; }         // → claim "codigo_sistema" (siempre "cplec")
 }
 
@@ -123,9 +123,12 @@ public sealed class JwtTokenService : IJwtTokenService
         yield return new Claim("codigo_sistema", c.CodigoSistema);
         yield return new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"));
 
-        // Un ClaimTypes.Role por cada rol RBAC activo. Esto es lo que consume
-        // [Authorize(Roles = "cplec_docente")] del lado de ASP.NET.
+        // Un claim "role" por cada rol RBAC activo. Debe usar el string literal
+        // "role" (no ClaimTypes.Role, que serializa como la URI larga
+        // http://schemas.../role): la validación JWT tiene MapInboundClaims=false
+        // y RoleClaimType="role", así que el nombre debe coincidir exactamente o
+        // [Authorize(Roles = "cplec_docente")] nunca encuentra el claim y da 403.
         foreach (var rol in c.Roles)
-            yield return new Claim(ClaimTypes.Role, rol);
+            yield return new Claim("role", rol);
     }
 }

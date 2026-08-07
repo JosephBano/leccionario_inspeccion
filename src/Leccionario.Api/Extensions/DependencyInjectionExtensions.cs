@@ -94,6 +94,13 @@ public static class DependencyInjectionExtensions
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(o =>
             {
+                // Sin esto, ASP.NET Core mapea `sub` → ClaimTypes.NameIdentifier
+                // (y `role` → ClaimTypes.Role, etc.) antes de poblar `User`. Eso
+                // rompe `User.FindFirstValue("sub")` que usamos en DistributivoGuard
+                // y SesionesController para tomar el idProfesor del token.
+                // Ver https://learn.microsoft.com/aspnet/core/security/authentication/jwt
+                o.MapInboundClaims = false;
+
                 o.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer           = true,
@@ -103,7 +110,14 @@ public static class DependencyInjectionExtensions
                     ValidateLifetime         = true,
                     ClockSkew                = TimeSpan.FromMinutes(5),
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+                    IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+                    // Los claims personalizados del sistema cplec viajan con su
+                    // nombre original (no se mapean a URI de esquema). Importante:
+                    // `role` sí se queda con nombre "role", pero `Authorize(Roles=...)`
+                    // usa `ClaimTypes.Role` por defecto — por eso lo declaramos
+                    // explícitamente aquí.
+                    RoleClaimType            = "role",
+                    NameClaimType            = "nombre"
                 };
             });
 
