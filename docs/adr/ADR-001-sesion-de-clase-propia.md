@@ -1,8 +1,19 @@
 # ADR-001 — Sesión de clase propia en vez de reutilizar `horario_detalle`
 
-- **Estado:** Aceptada
+- **Estado:** Aceptada — **enmendada parcialmente por
+  [ADR-008](ADR-008-horarios-en-tabla-compartida.md)** (2026-08-07)
 - **Fecha:** 2026-08-06
 - **Autor:** dv_jb
+
+> **Qué sigue vigente:** `cplec_sesiones` y `cplec_asistencias` son tablas propias, la
+> sesión conserva el **grano día** y `matriculas_asistencias` sigue intacta.
+>
+> **Qué cambió:** ADR-008 revierte el punto "`horario_detalle` queda intacta: no se lee
+> ni se escribe". El inspector ahora arma el horario del paralelo **escribiendo filas de
+> carrera 6 en `horario_detalle`** (sin `ALTER TABLE`), y la sesión se ancla a un bloque
+> contiguo de ese horario vía `cplec_sesiones.idHorarioInicio`. La alternativa descartada
+> más abajo —"poblar `horario_detalle` con sesiones sintéticas"— sigue descartada: lo que
+> se escribe ahí es **planificación**, no sesiones dictadas.
 
 ## Contexto
 

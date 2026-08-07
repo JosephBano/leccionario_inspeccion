@@ -1,0 +1,37 @@
+// =============================================================================
+// Estilos globales — cplec
+// =============================================================================
+@use './material-theme';
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--cplec-font-body);
+  background: var(--cplec-cream);
+  color: var(--cplec-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+  font-family: var(--cplec-font-display);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--cplec-navy);
+}
+
+// Hacer focus visible para accesibilidad
+:focus-visible {
+  outline: 2px solid var(--cplec-gold);
+  outline-offset: 2px;
+}
+
+// Utilidad para área táctil mínima (pasar lista)
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}

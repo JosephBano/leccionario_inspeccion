@@ -1,0 +1,81 @@
+// =============================================================================
+// Theme institucional — ISTPET · cplec
+// Paleta tomada del Manual de Identidad Corporativa ISTPET:
+//   azul institucional Pantone 2767C (#222C57) · dorado Pantone 7406C (#C4A857)
+//
+// Las paletas tonales M3 (primary/tertiary) están generadas en theme-colors.scss
+// vía `ng generate @angular/material:m3-theme --primary-color=#222c57
+// --tertiary-color=#c4a857`. mat.theme() exige paletas M3 (tonos 0-100), no
+// mapas M2 (50-900) hechos a mano — con un mapa M2 las variables --mat-sys-*
+// quedan vacías y los componentes "primary" pierden su color.
+// =============================================================================
+@use '@angular/material' as mat;
+@use './theme-colors' as istpet-theme;
+
+html {
+  @include mat.theme((
+    color: (
+      primary: istpet-theme.$primary-palette,
+      theme-type: light,
+      tertiary: istpet-theme.$tertiary-palette,
+    ),
+    typography: (
+      plain-family: 'Open Sans',
+      brand-family: 'Oswald',
+      bold-weight: 700,
+      medium-weight: 600,
+      regular-weight: 400,
+    ),
+    density: 0,
+  ));
+}
+
+// M3 deriva "primary" en tono 40 de la paleta generada (#525c8a), más claro que
+// el azul institucional exacto. Se fija el rol "primary" al azul de marca para
+// que botones y superficies coincidan con el manual, sin tocar el resto de la
+// paleta derivada (containers, superficies, estados).
+:root {
+  --mat-sys-primary: #222c57;
+  --mat-sys-on-primary: #ffffff;
+}
+
+// Tokens de marca — ISTPET (manual de identidad corporativa §2, §9)
+:root {
+  --cplec-navy: #222c57;
+  --cplec-navy-dark: #121730;
+  --cplec-navy-light: #5c6798;
+  --cplec-gold: #c4a857;
+  --cplec-gold-light: #eadaa0;
+  --cplec-cream: #f7f6f2;
+  --cplec-ink: #1c2233;
+  --cplec-ink-muted: #5b6175;
+
+  --cplec-font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --cplec-font-body: 'Open Sans', 'Segoe UI', Roboto, Arial, sans-serif;
+  --cplec-font-script: 'Alex Brush', cursive;
+}
+
+// Tokens expuestos como CSS variables para uso en SCSS de componentes
+:root {
+  --cplec-color-presente: #2e7d32;
+  --cplec-color-presente-bg: #e8f5e9;
+  --cplec-color-ausente: #c5211f;
+  --cplec-color-ausente-bg: #fdecea;
+  --cplec-color-atraso: #ef6c00;
+  --cplec-color-atraso-bg: #fff3e0;
+  --cplec-color-justificado: #1565c0;
+  --cplec-color-justificado-bg: #e3f2fd;
+
+  --cplec-spacing-1: 4px;
+  --cplec-spacing-2: 8px;
+  --cplec-spacing-3: 12px;
+  --cplec-spacing-4: 16px;
+  --cplec-spacing-6: 24px;
+  --cplec-spacing-8: 32px;
+
+  --cplec-radius-sm: 4px;
+  --cplec-radius-md: 8px;
+  --cplec-radius-lg: 12px;
+
+  --cplec-touch-target: 44px;
+}
