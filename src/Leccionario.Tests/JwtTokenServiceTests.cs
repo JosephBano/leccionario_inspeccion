@@ -94,4 +94,18 @@ public sealed class JwtTokenServiceTests
         Action act = () => svc.GenerateAccessToken(claims);
         act.Should().Throw<ArgumentException>();
     }
+
+    [TestMethod]
+    public void ExpiryHours_SinParametro_DevuelveDefaultDe8()
+    {
+        var svc = new JwtTokenService(Secret);
+        svc.ExpiryHours.Should().Be(8);
+    }
+
+    [TestMethod]
+    public void ExpiryHours_ConParametro_DevuelveElValorPasado()
+    {
+        var svc = new JwtTokenService(Secret, expiryHours: 4);
+        svc.ExpiryHours.Should().Be(4);
+    }
 }
