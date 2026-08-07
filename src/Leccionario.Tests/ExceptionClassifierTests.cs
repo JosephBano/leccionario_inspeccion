@@ -67,6 +67,15 @@ public sealed class ExceptionClassifierTests
     }
 
     [TestMethod]
+    public void GetCodigo_SinAccesoSistema_DevuelveCodigoEstable()
+    {
+        ExceptionClassifier.GetCodigo(new SinAccesoSistemaException())
+            .Should().Be("SIN_ACCESO_SISTEMA");
+        ExceptionClassifier.GetHttpStatus(new SinAccesoSistemaException())
+            .Should().Be(403);
+    }
+
+    [TestMethod]
     public void GetCodigo_Generica_DevuelveErrorInterno()
     {
         ExceptionClassifier.GetCodigo(new InvalidOperationException("x"))

@@ -17,6 +17,9 @@ public interface IJwtTokenService
 
     /// <summary>Valida el token. Devuelve <c>null</c> si la firma, issuer, audience o expiración no coinciden.</summary>
     ClaimsPrincipal? ValidateToken(string token);
+
+    /// <summary>Horas de vigencia del access token — usado para calcular ExpiresIn en segundos.</summary>
+    int ExpiryHours { get; }
 }
 
 /// <summary>Claims de entrada para emitir un access token.</summary>
@@ -59,6 +62,8 @@ public sealed class JwtTokenService : IJwtTokenService
         _audience = audience ?? DefaultAudience;
         _expiryHours = expiryHours ?? DefaultExpiryHours;
     }
+
+    public int ExpiryHours => _expiryHours;
 
     public string GenerateAccessToken(JwtTokenClaims claims)
     {

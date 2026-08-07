@@ -83,4 +83,12 @@ public sealed class AppExceptionTests
         var ex = new ConflictoException("SESION_DUPLICADA", "ya hay sesión para esta fecha");
         ex.Codigo.Should().Be("SESION_DUPLICADA");
     }
+
+    [TestMethod]
+    public void SinAccesoSistemaException_DevuelveCodigo403()
+    {
+        var ex = new SinAccesoSistemaException();
+        ex.Codigo.Should().Be("SIN_ACCESO_SISTEMA");
+        ex.HttpStatus.Should().Be(403);
+    }
 }
