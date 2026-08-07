@@ -73,6 +73,9 @@ public static class DependencyInjectionExtensions
             o.UseMySql(connectionString, ServerVersion.Create(new Version(5, 7, 21), Pomelo.EntityFrameworkCore.MySql.Infrastructure.ServerType.MySql), my =>
                 my.EnableRetryOnFailure(maxRetryCount: 2, maxRetryDelay: TimeSpan.FromSeconds(2), errorNumbersToAdd: null)));
 
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+        services.AddScoped<IAuthService, AuthService>();
+
         return services;
     }
 
