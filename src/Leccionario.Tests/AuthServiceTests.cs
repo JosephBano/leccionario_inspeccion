@@ -229,4 +229,137 @@ public sealed class AuthServiceTests
         creado.tablaSigafi.Should().Be("profesor");
         PasswordService.Verify(Contrasena, creado.contrasenia).Should().BeTrue();
     }
+
+    [TestMethod]
+    public async Task RefreshTokenAsync_TokenInvalido_LanzaUnauthorized()
+    {
+        using var db = NewDb();
+        var mockRefresh = new Mock<IRefreshTokenService>();
+        mockRefresh.Setup(r => r.ValidateAndRotateAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenValidationResult { Status = RefreshTokenStatus.Invalid });
+        var svc = NewService(db, mockRefresh);
+
+        var act = async () => await svc.RefreshTokenAsync("token-invalido", null, null);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [TestMethod]
+    public async Task RefreshTokenAsync_TokenValido_EmiteNuevoAccessTokenConRolesActuales()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        var idRol = await CrearRolCplecAsync(db, "cplec_inspector");
+        await AsignarRolAsync(db, usuario.idUsuario, idRol);
+
+        var mockRefresh = new Mock<IRefreshTokenService>();
+        mockRefresh.Setup(r => r.ValidateAndRotateAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenValidationResult
+            {
+                Status = RefreshTokenStatus.Ok,
+                IdUsuario = usuario.idUsuario,
+                NewRefreshToken = "nuevo-refresh-token",
+                NewRefreshTokenExpiresAt = DateTime.UtcNow.AddDays(7)
+            });
+        var svc = NewService(db, mockRefresh);
+
+        var respuesta = await svc.RefreshTokenAsync("token-viejo", null, null);
+
+        respuesta.AccessToken.Should().NotBeNullOrEmpty();
+        respuesta.RefreshToken.Should().Be("nuevo-refresh-token");
+        respuesta.ExpiresIn.Should().Be(8 * 3600);
+    }
+
+    [TestMethod]
+    public async Task RefreshTokenAsync_UsuarioInactivoTrasRotacion_LanzaUnauthorized()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        usuario.activo = 0;
+        await db.SaveChangesAsync();
+
+        var mockRefresh = new Mock<IRefreshTokenService>();
+        mockRefresh.Setup(r => r.ValidateAndRotateAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenValidationResult { Status = RefreshTokenStatus.Ok, IdUsuario = usuario.idUsuario, NewRefreshToken = "x" });
+        var svc = NewService(db, mockRefresh);
+
+        var act = async () => await svc.RefreshTokenAsync("token", null, null);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [TestMethod]
+    public async Task RefreshTokenAsync_UsuarioSinRolCplec_LanzaSinAccesoSistema()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+
+        var mockRefresh = new Mock<IRefreshTokenService>();
+        mockRefresh.Setup(r => r.ValidateAndRotateAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RefreshTokenValidationResult { Status = RefreshTokenStatus.Ok, IdUsuario = usuario.idUsuario, NewRefreshToken = "x" });
+        var svc = NewService(db, mockRefresh);
+
+        var act = async () => await svc.RefreshTokenAsync("token", null, null);
+
+        await act.Should().ThrowAsync<SinAccesoSistemaException>();
+    }
+
+    [TestMethod]
+    public async Task LogoutAsync_DelegaEnRevokeAsyncConRazonLogout()
+    {
+        using var db = NewDb();
+        var mockRefresh = NewMockRefreshTokens();
+        var svc = NewService(db, mockRefresh);
+
+        await svc.LogoutAsync("token-a-revocar");
+
+        mockRefresh.Verify(r => r.RevokeAsync("token-a-revocar", RefreshTokenRevokedReason.Logout, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task ObtenerMiPerfilAsync_Docente_PuedeReabrirSesionEsFalse()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        var idRol = await CrearRolCplecAsync(db, "cplec_docente");
+        await AsignarRolAsync(db, usuario.idUsuario, idRol);
+        var svc = NewService(db);
+
+        var perfil = await svc.ObtenerMiPerfilAsync(usuario.idUsuario);
+
+        perfil.Usuario.Roles.Should().Contain("cplec_docente");
+        perfil.Permisos.PuedeEditarAsistencia.Should().BeTrue();
+        perfil.Permisos.PuedeCerrarSesion.Should().BeTrue();
+        perfil.Permisos.PuedeReabrirSesion.Should().BeFalse();
+        perfil.Permisos.PuedeEliminarAsistencia.Should().BeFalse();
+        perfil.Permisos.PuedeDescargarReportes.Should().BeTrue();
+        perfil.Paralelos.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task ObtenerMiPerfilAsync_Inspector_PuedeReabrirSesionEsTrue()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        var idRol = await CrearRolCplecAsync(db, "cplec_inspector");
+        await AsignarRolAsync(db, usuario.idUsuario, idRol);
+        var svc = NewService(db);
+
+        var perfil = await svc.ObtenerMiPerfilAsync(usuario.idUsuario);
+
+        perfil.Permisos.PuedeReabrirSesion.Should().BeTrue();
+        perfil.Paralelos.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task ObtenerMiPerfilAsync_UsuarioSinRolCplec_LanzaSinAccesoSistema()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        var svc = NewService(db);
+
+        var act = async () => await svc.ObtenerMiPerfilAsync(usuario.idUsuario);
+
+        await act.Should().ThrowAsync<SinAccesoSistemaException>();
+    }
 }

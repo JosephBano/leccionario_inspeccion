@@ -76,14 +76,81 @@ public sealed class AuthService : IAuthService
         };
     }
 
-    public Task<RefreshTokenResponseDto> RefreshTokenAsync(string refreshToken, string? deviceInfo, string? ipAddress, CancellationToken ct = default)
-        => throw new NotImplementedException("Se implementa en la Tarea 7.");
+    public async Task<RefreshTokenResponseDto> RefreshTokenAsync(string refreshToken, string? deviceInfo, string? ipAddress, CancellationToken ct = default)
+    {
+        var resultado = await _refreshTokens.ValidateAndRotateAsync(refreshToken, deviceInfo, ipAddress, ct);
 
-    public Task LogoutAsync(string refreshToken, CancellationToken ct = default)
-        => throw new NotImplementedException("Se implementa en la Tarea 7.");
+        if (resultado.Status != RefreshTokenStatus.Ok || resultado.IdUsuario is null || resultado.NewRefreshToken is null)
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
 
-    public Task<MiPerfilDto> ObtenerMiPerfilAsync(int idUsuario, CancellationToken ct = default)
-        => throw new NotImplementedException("Se implementa en la Tarea 7.");
+        var usuario = await _db.usuarios.FirstOrDefaultAsync(u => u.idUsuario == resultado.IdUsuario, ct);
+        if (usuario is null || usuario.activo != 1)
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
+
+        var roles = await CargarRolesCplecAsync(usuario.idUsuario, ct);
+        if (roles.Count == 0)
+            throw new SinAccesoSistemaException();
+
+        var accessToken = _jwt.GenerateAccessToken(new JwtTokenClaims
+        {
+            IdSigafi = usuario.idSigafi,
+            IdUsuario = usuario.idUsuario,
+            Nombre = usuario.nombre ?? usuario.idSigafi,
+            Email = await ResolverEmailAsync(usuario, ct),
+            TipoUsuario = ResolverTipoUsuario(usuario.tablaSigafi),
+            Roles = roles,
+            CodigoSistema = _sistemaCodigo
+        });
+
+        return new RefreshTokenResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = resultado.NewRefreshToken,
+            ExpiresIn = _jwt.ExpiryHours * 3600
+        };
+    }
+
+    public Task LogoutAsync(string refreshToken, CancellationToken ct = default) =>
+        _refreshTokens.RevokeAsync(refreshToken, RefreshTokenRevokedReason.Logout, ct);
+
+    public async Task<MiPerfilDto> ObtenerMiPerfilAsync(int idUsuario, CancellationToken ct = default)
+    {
+        var usuario = await _db.usuarios.FirstOrDefaultAsync(u => u.idUsuario == idUsuario, ct)
+            ?? throw new UnauthorizedAccessException("Credenciales inválidas.");
+
+        var roles = await CargarRolesCplecAsync(usuario.idUsuario, ct);
+        if (roles.Count == 0)
+            throw new SinAccesoSistemaException();
+
+        return new MiPerfilDto
+        {
+            Usuario = new UsuarioDto
+            {
+                IdSigafi = usuario.idSigafi,
+                Nombre = usuario.nombre ?? usuario.idSigafi,
+                Email = await ResolverEmailAsync(usuario, ct),
+                TipoUsuario = ResolverTipoUsuario(usuario.tablaSigafi),
+                Roles = roles
+            },
+            // Vacío hasta que exista el DistributivoGuard — ver
+            // docs/superpowers/specs/2026-08-06-auth-login-design.md §3.
+            Paralelos = Array.Empty<ParaleloResumenDto>(),
+            Permisos = CalcularPermisos(roles)
+        };
+    }
+
+    private static PermisosDto CalcularPermisos(IReadOnlyList<string> roles)
+    {
+        var esInspector = roles.Contains("cplec_inspector");
+        return new PermisosDto
+        {
+            PuedeEditarAsistencia = true,
+            PuedeCerrarSesion = true,
+            PuedeReabrirSesion = esInspector,
+            PuedeEliminarAsistencia = false,
+            PuedeDescargarReportes = true
+        };
+    }
 
     // ------------------------------------------------------------------
     // Helpers privados
