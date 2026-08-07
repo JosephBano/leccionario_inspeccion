@@ -35,7 +35,7 @@ Uniforme para toda la API, generado por `ApiExceptionMiddleware`:
 | 400 | `VALIDACION` | DTO inválido. `detalles` trae los errores por campo |
 | 401 | `CREDENCIALES_INVALIDAS` | Login fallido. Mensaje **siempre** el mismo |
 | 401 | `TOKEN_EXPIRADO` | El access token venció → el cliente hace refresh |
-| 403 | `CUENTA_INACTIVA` | Credencial correcta, `usuarios.activo = 0` |
+| 401 | `CUENTA_INACTIVA` | Credencial correcta, `usuarios.activo = 0` |
 | 403 | `SIN_ACCESO_SISTEMA` | El usuario no tiene ningún rol `cplec_*` |
 | 403 | `DISTRIBUTIVO_AJENO` | El docente pidió una asignación que no es suya |
 | 403 | `SESION_CERRADA` | Intento de editar una sesión con `estado = 'cerrada'` |
