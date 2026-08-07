@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Leccionario.Api.Application.Authenticacion.Auth;
 using Leccionario.Api.Application.Common.Exceptions;
+using Leccionario.Api.Application.Distributivo;
 using Leccionario.Api.Domain.Entities;
 using Leccionario.Api.Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
@@ -34,8 +35,18 @@ public sealed class AuthServiceTests
         return mock;
     }
 
-    private static AuthService NewService(sigafi_esContext db, Mock<IRefreshTokenService>? refreshTokens = null) =>
-        new(db, new JwtTokenService(JwtSecret), (refreshTokens ?? NewMockRefreshTokens()).Object, NewConfig(), NullLogger<AuthService>.Instance);
+    private static AuthService NewService(sigafi_esContext db, Mock<IRefreshTokenService>? refreshTokens = null, Mock<IMisParalelosService>? misParalelos = null)
+    {
+        var paralelosMock = misParalelos ?? new Mock<IMisParalelosService>();
+        paralelosMock.Setup(s => s.ResolverAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
+                     .ReturnsAsync(Array.Empty<MiParaleloDto>());
+        return new(db,
+            new JwtTokenService(JwtSecret),
+            (refreshTokens ?? NewMockRefreshTokens()).Object,
+            paralelosMock.Object,
+            NewConfig(),
+            NullLogger<AuthService>.Instance);
+    }
 
     /// <summary>Siembra sistema/modulo/operacion/rol-modulo-operacion para que un rol quede "con grants sobre cplec". Devuelve idRol.</summary>
     private static async Task<int> CrearRolCplecAsync(sigafi_esContext db, string codigoRol)
@@ -361,5 +372,51 @@ public sealed class AuthServiceTests
         var act = async () => await svc.ObtenerMiPerfilAsync(usuario.idUsuario);
 
         await act.Should().ThrowAsync<SinAccesoSistemaException>();
+    }
+
+    [TestMethod]
+    public async Task ObtenerMiPerfilAsync_Docente_DevuelveParalelosDelDistributivo()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        var idRol = await CrearRolCplecAsync(db, "cplec_docente");
+        await AsignarRolAsync(db, usuario.idUsuario, idRol);
+
+        var mockMisParalelos = new Mock<Leccionario.Api.Application.Distributivo.IMisParalelosService>();
+        mockMisParalelos.Setup(s => s.ResolverAsync(usuario.idSigafi, It.IsAny<string?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<MiParaleloDto>
+            {
+                new() { IdAsignacion = 100, IdPeriodo = "OCC2025", Asignatura = "GEOGRAFÍA", TipoLicencia = "TIPO \"C\"", Jornada = "NOCTURNA", Modalidad = "PRESENCIAL", Paralelo = "A", FechaInicial = new DateOnly(2025,10,6), FechaFin = new DateOnly(2025,11,5), TotalAlumnos = 29, SesionesRegistradas = 0, UltimaSesion = null }
+            });
+
+        var svc = new AuthService(
+            db,
+            new JwtTokenService(JwtSecret),
+            NewMockRefreshTokens().Object,
+            mockMisParalelos.Object,
+            NewConfig(),
+            NullLogger<AuthService>.Instance);
+
+        var perfil = await svc.ObtenerMiPerfilAsync(usuario.idUsuario);
+
+        perfil.Paralelos.Should().HaveCount(1);
+        perfil.Paralelos[0].IdAsignacion.Should().Be(100);
+        perfil.Paralelos[0].Asignatura.Should().Be("GEOGRAFÍA");
+        perfil.Paralelos[0].TotalAlumnos.Should().Be(29);
+    }
+
+    [TestMethod]
+    public async Task ObtenerMiPerfilAsync_Inspector_ListaParalelosVacia()
+    {
+        using var db = NewDb();
+        var usuario = await CrearUsuarioActivoAsync(db);
+        var idRol = await CrearRolCplecAsync(db, "cplec_inspector");
+        await AsignarRolAsync(db, usuario.idUsuario, idRol);
+
+        var svc = NewService(db);
+
+        var perfil = await svc.ObtenerMiPerfilAsync(usuario.idUsuario);
+
+        perfil.Paralelos.Should().BeEmpty();
     }
 }

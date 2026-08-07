@@ -1,4 +1,5 @@
 using Leccionario.Api.Application.Common.Exceptions;
+using Leccionario.Api.Application.Distributivo;
 using Leccionario.Api.Domain.Entities;
 using Leccionario.Api.Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public sealed class AuthService : IAuthService
     private readonly sigafi_esContext _db;
     private readonly IJwtTokenService _jwt;
     private readonly IRefreshTokenService _refreshTokens;
+    private readonly IMisParalelosService _misParalelos;
     private readonly ILogger<AuthService> _logger;
     private readonly string _sistemaCodigo;
 
@@ -24,12 +26,14 @@ public sealed class AuthService : IAuthService
         sigafi_esContext db,
         IJwtTokenService jwt,
         IRefreshTokenService refreshTokens,
+        IMisParalelosService misParalelos,
         IConfiguration config,
         ILogger<AuthService> logger)
     {
         _db = db;
         _jwt = jwt;
         _refreshTokens = refreshTokens;
+        _misParalelos = misParalelos;
         _logger = logger;
         _sistemaCodigo = config["SistemaCodigo"] ?? "cplec";
     }
@@ -122,6 +126,8 @@ public sealed class AuthService : IAuthService
         if (roles.Count == 0)
             throw new SinAccesoSistemaException();
 
+        var paralelos = await ResolverParalelosDelPerfilAsync(usuario, roles, ct);
+
         return new MiPerfilDto
         {
             Usuario = new UsuarioDto
@@ -132,11 +138,56 @@ public sealed class AuthService : IAuthService
                 TipoUsuario = ResolverTipoUsuario(usuario.tablaSigafi),
                 Roles = roles
             },
-            // Vacío hasta que exista el DistributivoGuard — ver
-            // docs/superpowers/specs/2026-08-06-auth-login-design.md §3.
-            Paralelos = Array.Empty<ParaleloResumenDto>(),
+            Paralelos = paralelos,
             Permisos = CalcularPermisos(roles)
         };
+    }
+
+    /// <summary>
+    /// Devuelve la lista de paralelos para el perfil: solo los del distributivo
+    /// del docente; los inspectores ven la lista vacía (pueden consultar
+    /// cualquier asignación por su cuenta). Service inyectable por DI para
+    /// poder mockearlo en tests.
+    /// </summary>
+    private async Task<IReadOnlyList<ParaleloResumenDto>> ResolverParalelosDelPerfilAsync(
+        usuarios usuario,
+        IReadOnlyList<string> roles,
+        CancellationToken ct)
+    {
+        if (!roles.Contains("cplec_docente"))
+            return Array.Empty<ParaleloResumenDto>();
+
+        var idPeriodo = await ResolverPeriodoPorDefectoAsync(ct);
+        var items = await _misParalelos.ResolverAsync(usuario.idSigafi, idPeriodo, ct: ct);
+
+        return items.Select(p => new ParaleloResumenDto
+        {
+            IdAsignacion = p.IdAsignacion,
+            IdPeriodo = p.IdPeriodo,
+            Asignatura = p.Asignatura,
+            TipoLicencia = p.TipoLicencia,
+            Jornada = p.Jornada,
+            Modalidad = p.Modalidad,
+            Paralelo = p.Paralelo,
+            FechaInicial = p.FechaInicial,
+            FechaFin = p.FechaFin,
+            TotalAlumnos = p.TotalAlumnos
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Período por defecto del perfil: el más reciente del nivel "más reciente"
+    /// del docente (un solo query simple). Si no encuentra, devuelve null
+    /// (= todos los activos).
+    /// </summary>
+    private async Task<string?> ResolverPeriodoPorDefectoAsync(CancellationToken ct)
+    {
+        return await _db.asignaciones_profesores
+            .AsNoTracking()
+            .Where(ap => ap.activo == 1)
+            .OrderByDescending(ap => ap.fecha_fin)
+            .Select(ap => ap.idPeriodo)
+            .FirstOrDefaultAsync(ct);
     }
 
     private static PermisosDto CalcularPermisos(IReadOnlyList<string> roles)
