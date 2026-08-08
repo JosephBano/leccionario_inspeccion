@@ -18,7 +18,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
+  { label: 'Mi horario', path: '/mi-horario', icon: 'calendar_month', roles: [Roles.docente] },
   { label: 'Mis paralelos', path: '/mis-paralelos', icon: 'list_alt', roles: [Roles.docente] },
+  { label: 'Horarios', path: '/horarios', icon: 'schedule', roles: [Roles.inspector] },
+  { label: 'Franjas', path: '/franjas', icon: 'more_time', roles: [Roles.inspector] },
   { label: 'Reportes', path: '/reportes', icon: 'analytics', roles: [Roles.inspector] },
 ];
 

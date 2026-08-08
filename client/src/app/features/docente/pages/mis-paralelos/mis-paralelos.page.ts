@@ -95,10 +95,10 @@ interface ParaleloAgrupado {
                           <a
                             mat-flat-button
                             color="primary"
-                            [routerLink]="['/paralelos', p.idAsignacion, 'pasar-lista']"
+                            [routerLink]="['/paralelos', p.idAsignacion, 'agenda']"
                           >
-                            <mat-icon>edit_note</mat-icon>
-                            Pasar lista
+                            <mat-icon>calendar_month</mat-icon>
+                            Ver agenda
                           </a>
                         </mat-card-actions>
                       </mat-card>
