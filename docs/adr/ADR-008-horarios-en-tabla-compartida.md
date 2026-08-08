@@ -44,10 +44,22 @@ solo inserta y actualiza **filas** que le pertenecen.
 
 `cplec` escribe filas en `horario_detalle`. Se descarta `cplec_horarios` propia.
 
-La razón decisiva es que un docente de la escuela de conducción puede dictar también en
-otra carrera. Con tabla propia, ese choque de agenda es indetectable por construcción.
-Con la tabla compartida, la validación de conflictos ve todas las carreras y el horario
-de `cplec` es visible para `gestion_academica`.
+El horario del instituto vive en una sola tabla, y el de la escuela de conducción también
+debe estar ahí: es el mismo dato institucional, consultable por cualquier sistema que
+mire `sigafi_es`, sin un segundo modelo paralelo que después haya que reconciliar. La
+validación de conflictos, además, puede leer todas las carreras.
+
+**Este ADR se redactó primero afirmando que la razón decisiva era el choque de agenda de
+un docente que dicta en varias carreras. La medición del 2026-08-07 no respalda esa
+afirmación** (ver el spec, sección 3, H6): de 421 docentes de la carrera 6, 33 dictan
+también en otras carreras, solo 2 de ellos tienen horario cargado en otra carrera, y
+**ninguno** con solapamiento de fechas. Hoy la detección cruzada dispararía cero veces.
+
+El beneficio existe pero es **potencial, no actual**: `gestion_academica` empezó a cargar
+horarios en 2026-05 y su cobertura crece. La decisión de usar la tabla compartida se
+mantiene por la razón de arriba —un solo horario institucional— y no por la detección
+cruzada, que se conserva como consecuencia útil. Se deja constancia porque quien lea este
+ADR en un año merece los números y no una racionalización.
 
 Esto **enmienda** la alternativa descartada de ADR-001 ("poblar `horario_detalle` con
 sesiones sintéticas"). La diferencia no es cosmética: ADR-001 rechazaba meter ahí
@@ -242,8 +254,44 @@ Del módulo de `gestion_academica` entran: grid semanal, panel de asignación, r
 sobre rango de semanas (con editar y eliminar por rango) y validación de conflictos.
 
 Quedan fuera, como hitos posteriores si se piden: generación automática
-(`ScheduleGeneratorService`, 924 líneas — rinde poco con pocos paralelos), reasignación y
-recuperación pedagógica, feriados / `fecha_config`, espacios y drag-and-drop en el grid.
+(`ScheduleGeneratorService`, 924 líneas — imposible sin datos de carga horaria, ver
+decisión 12), reasignación y recuperación pedagógica, feriados / `fecha_config`, espacios
+y drag-and-drop en el grid.
+
+### 11. La replicación se acota: rango explícito y tope duro de filas
+
+Como `cplec` escribe en una tabla compartida de producción, **la replicación nunca toma
+por defecto el rango completo de la asignación**. El inspector indica `desde`/`hasta`
+explícitos, y la operación se rechaza con 422 si generaría más filas que el tope.
+
+La medición lo exige. Los módulos de la carrera 6 no son cortos: mínimo 12 días, máximo
+**408**, promedio 41,2 — y los cuatro paralelos vigentes hoy corren entre 380 y 408 días.
+Replicar Lun-Vie × 4 franjas sobre las 7 asignaciones vigentes produciría **6 940 filas**,
+casi cuatro veces las **1 781** que tiene `horario_detalle` entera, y son 7 de las 8 737
+asignaciones activas de la carrera. Sin tope, el primer uso del módulo inflaría la tabla
+de otro sistema en un orden de magnitud.
+
+Los topes: **máximo 16 semanas por operación** y **máximo 500 filas por operación**. Si el
+inspector necesita cubrir un módulo de 408 días, son varias operaciones deliberadas en vez
+de un clic. Es coherente con la práctica real de `gestion_academica`, que materializa
+1 740 filas sobre solo **34 fechas distintas** —no el período completo— con 23,5 filas por
+asignación.
+
+Se descarta que el tope sea configurable: un tope que se puede subir desde la UI no es un
+tope.
+
+### 12. No hay datos de carga horaria, y el sistema no los inventa
+
+`numeroHoras` es NULL en las **20 780** asignaciones de la carrera 6, y
+`horasPracticoExperimental` es `0.00` en las 20 780. La carrera no registra carga horaria.
+
+Consecuencias que se aceptan explícitamente: el sistema **no** valida que el horario cubra
+las horas requeridas de la asignatura, y **no** muestra "faltan N horas por planificar".
+`cplec_sesiones.minutosPlanificados` se calcula desde las franjas del horario
+(`horas_clases.minutos`), que sí es un dato real, y no desde `numeroHoras`.
+
+No se rellena `numeroHoras`: es una columna de una tabla compartida y su vacío es un hecho
+del negocio, no un error que a `cplec` le toque corregir.
 
 ## Consecuencias
 

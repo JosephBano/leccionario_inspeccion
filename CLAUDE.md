@@ -59,12 +59,25 @@ Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) sección 5.
   `secciones.seccion` es la **jornada** (matutina/nocturna/…). No son "niveles".
 - Las sesiones son **por día, no por hora**. Sin FK a `horas_clases`.
 - El rango válido de una sesión sale de `asignaciones_profesores.fecha_inicial ..
-  fecha_fin` (módulos cortos, de 2 a 6 semanas). `periodos.activo` **no** sirve para
-  saber el período vigente: está en 1 en casi todos, incluidos los de 2022.
+  fecha_fin`. **Medido 2026-08-07: mín 12 días, máx 408, promedio 41.** No son "módulos
+  cortos de 2 a 6 semanas": eso es la mediana. Los paralelos vigentes hoy corren 380-408
+  días. Y **737 asignaciones activas de carrera 6 tienen ese rango en NULL**.
+  `periodos.activo` **no** sirve para saber el período vigente: está en 1 en casi todos,
+  incluidos los de 2022.
+- `numeroHoras` es NULL y `horasPracticoExperimental` es `0.00` en las **20 780**
+  asignaciones de la carrera 6. No hay carga horaria: no se puede validar cobertura.
+- `activo` es `tinyint(4)` con datos sucios (hay una fila con `11`). Comparar siempre
+  `activo = 1`, nunca `<> 0`.
 - La unidad de asistencia es **`matriculas.idMatricula`**, no `idAlumno`: un alumno
   puede estar matriculado en varios paralelos.
 - **`horario_detalle` está vacío para la carrera 6** — por eso existe `cplec_sesiones`.
-  Ver [ADR-001](docs/adr/ADR-001-sesion-de-clase-propia.md).
+  Ver [ADR-001](docs/adr/ADR-001-sesion-de-clase-propia.md). A partir de
+  [ADR-008](docs/adr/ADR-008-horarios-en-tabla-compartida.md) el inspector **sí escribe**
+  ahí (solo filas de carrera 6, sin `ALTER`), con franjas propias `tipo='Z'` en
+  `horas_clases`. `'X'` es del instituto: no se toca.
+- **`horario_detalle` no tiene ningún índice único** (verificado, no confiar en lo que
+  dice ADR-001 al respecto). Unicidad y conflictos viven en la transacción `Serializable`
+  + retry ante deadlock 1213; el retry **es** el mecanismo, no una mejora.
 - `matriculas_asistencias` (legacy, grano día) **no se toca**.
 - `asignaciones_profesores.paralelo` es `char(1)` y `matriculas.paralelo` es
   `varchar(10)`: normalizar con `TRIM()` al comparar desde código.

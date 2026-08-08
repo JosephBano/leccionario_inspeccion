@@ -38,10 +38,16 @@ Generación automática de horarios, reasignación / recuperación pedagógica, 
 4. **`fechas_horarios` es de solo lectura**, se alimenta por fuera.
 5. MySQL 5.7: sin CTEs, sin funciones de ventana, sin exclusion constraints.
 6. `Domain/Entities/` es generado por EF Core Power Tools; no se edita a mano.
+7. **`activo` se compara siempre con `= 1`.** Es `tinyint(4)` nullable en las tres tablas
+   y hay datos sucios (H10). Nunca `<> 0`, nunca como booleano truthy.
+8. **La replicación nunca toma un rango implícito**, y tiene topes duros (sección 5.6).
 
 ## 3. Hallazgos verificados contra `sigafi_es` (dev, 2026-08-07)
 
-Las cuatro incógnitas que bloqueaban M4b-0 están resueltas. Dos cambian el diseño.
+Consultado directamente contra la base de desarrollo. Las cuatro incógnitas que bloqueaban
+M4b-0 (H1–H4) están resueltas, y la verificación del flujo destapó seis hallazgos más
+(H5–H10). Tres cambian el diseño: **H1** deja la correctitud sin respaldo de la base,
+**H7** obliga a acotar la replicación, y **H9** elimina cualquier validación por horas.
 
 ### H1 — `horario_detalle` **no tiene ningún índice único**
 
@@ -132,6 +138,67 @@ arranque el primer período que lo cruce. Se refleja en la sección 10 como ries
 
 `horario_detalle` tiene 0 filas para la carrera 6. La suposición sobre la que descansa
 toda la frontera de propiedad (ADR-008, sección 2) se mantiene.
+
+Dato de refuerzo: **las 1 740 filas activas de `horario_detalle` usan exclusivamente
+franjas `tipo='X'`**, repartidas en 4 carreras (Gastronomía, Educación Básica,
+Electrónica, Redes) y 34 fechas distintas entre 2026-05-05 y 2026-09-12. La convención de
+gacad es limpia y no colisiona con `'Z'`.
+
+### H6 — el choque de docente entre carreras hoy es cero
+
+Medición del supuesto que originalmente justificaba la tabla compartida:
+
+| | |
+|---|---:|
+| Docentes en carrera 6 | 421 |
+| …que dictan también en otra carrera | 33 |
+| …que además tienen horario cargado en otra carrera | 2 |
+| …con solapamiento real de fechas | **0** |
+
+Los dos docentes (`…3904`, `…4793`) tienen su actividad de carrera 6 terminada
+(2026-04-30 y 2025-05-13) mientras su horario del instituto arranca en 2026-05-09.
+Verificado que el `0` no es un artefacto de la consulta: quitando el filtro de fechas el
+join devuelve 5 filas, simplemente no hay traslape temporal.
+
+**No cambia la decisión** —la tabla compartida se mantiene, ver ADR-008 decisión 1— pero
+sí cambia su justificación: el beneficio de la detección cruzada es potencial, no actual.
+
+### H7 — los módulos no son cortos, y la replicación tiene que acotarse
+
+`CLAUDE.md` afirma "módulos cortos, de 2 a 6 semanas". Sobre los períodos recientes
+(`OCC2025`, `JUC2026`, `JEC2026`, `ENE2026`, `MAC2026`, `MAE2026`, 531 asignaciones):
+
+```
+min 12 días · max 408 días · promedio 41,2
+24 asignaciones > 90 días · 6 > 180 días
+```
+
+Los cuatro paralelos vigentes hoy corren **380–408 días** (`idAsignacion` 23634:
+2025-11-06 → 2026-12-18). 2-6 semanas es la mediana, no la regla.
+
+Impacto directo: replicar Lun-Vie × 4 franjas sobre las 7 asignaciones vigentes generaría
+**6 940 filas** contra las **1 781** que tiene `horario_detalle` completa. De ahí el tope
+de la decisión 11 del ADR: rango explícito, máximo 16 semanas y 500 filas por operación.
+
+### H8 — 737 asignaciones activas sin ventana de fechas
+
+`SUM(fecha_inicial IS NULL OR fecha_fin IS NULL)` sobre carrera 6: **2 859** en total,
+**737** entre las activas (`activo = 1`). El diseño acotaba la replicación a
+`fecha_inicial .. fecha_fin` y `SesionService` valida contra esa ventana; para esas 737 no
+existe. Comportamiento definido en la sección 5.6.
+
+### H9 — no hay carga horaria
+
+`numeroHoras` es NULL en las **20 780** asignaciones de carrera 6.
+`horasPracticoExperimental` es `0.00` en las 20 780. Ver ADR-008 decisión 12: no se valida
+cobertura de horas y `minutosPlanificados` se calcula desde las franjas.
+
+### H10 — `activo` no es un booleano confiable
+
+`asignaciones_profesores.activo` es `tinyint(4)` y **existe una fila de carrera 6 con
+valor `11`**. Regla de implementación: comparar siempre `activo = 1`, nunca `activo <> 0`
+ni `activo` como truthy. Aplica igual a `horario_detalle.activo` y `horas_clases.activo`,
+que también son `tinyint(4)` nullable.
 
 ## 4. Modelo de datos
 
@@ -296,9 +363,30 @@ Crear valida `hora_inicio < hora_fin` y que no se solape con otra franja Z activ
 Replicar / editar / eliminar todas las ocurrencias de `(idAsignacion, díaSemana, idhora)`
 entre dos fechas.
 
-El rango se acota a `asignaciones_profesores.fecha_inicial .. fecha_fin`; pedir fuera de
-ahí es 422. **Un lote no falla entero**: devuelve `OperacionMasivaResultDto` con una
-entrada por fecha (`exitoso`, `motivoFallo`), de modo que un día sin fila en
+**El rango siempre es explícito.** `desde` y `hasta` son obligatorios; no existe "replicar
+todo el período". Escribimos en una tabla compartida de producción y los módulos llegan a
+408 días (H7).
+
+Validaciones del rango, en orden:
+
+1. `desde <= hasta`, ambos presentes → si no, 422 `RANGO_INVALIDO`.
+2. **Tope de 16 semanas** entre `desde` y `hasta` → 422 `RANGO_EXCEDE_TOPE`.
+3. Si la asignación **tiene** ventana, el rango debe caer dentro de
+   `fecha_inicial .. fecha_fin` → 422 `FUERA_DE_VENTANA`.
+   Si **no** la tiene (737 asignaciones activas, H8), no hay contra qué acotar: se acepta
+   el rango explícito tal cual y la respuesta incluye
+   `advertencia: "ASIGNACION_SIN_VENTANA"`. No se inventa una ventana ni se bloquea al
+   inspector por un dato que la carrera nunca cargó.
+4. **Conteo previo**: se calcula cuántas filas generaría antes de escribir ninguna. Si
+   supera **500**, se rechaza con 422 `LOTE_EXCEDE_TOPE` devolviendo el conteo estimado,
+   para que el inspector reduzca el rango. Este chequeo va **antes** de abrir la
+   transacción.
+
+Los dos topes son constantes del código, no configuración: un tope que se sube desde la UI
+no es un tope (ADR-008, decisión 11).
+
+Superadas las validaciones, **un lote no falla entero**: devuelve `OperacionMasivaResultDto`
+con una entrada por fecha (`exitoso`, `motivoFallo`), de modo que un día sin fila en
 `fechas_horarios` o con conflicto se reporta y el resto se procesa.
 
 ### 5.7 `AgendaService`
@@ -386,7 +474,8 @@ Todo bajo `cplec_inspector` salvo lo marcado. Errores por `codigo`, según
 
 Códigos de error nuevos: `FUERA_DE_ALCANCE` (403), `FRANJA_NO_PROPIA` (403),
 `CONFLICTO_HORARIO` (409), `FRANJA_EN_USO` (409), `SESION_FUTURA` (422),
-`HORARIO_REQUERIDO` (422), `FECHA_SIN_CALENDARIO` (422).
+`HORARIO_REQUERIDO` (422), `FECHA_SIN_CALENDARIO` (422), `RANGO_INVALIDO` (422),
+`RANGO_EXCEDE_TOPE` (422), `LOTE_EXCEDE_TOPE` (422), `FUERA_DE_VENTANA` (422).
 
 ## 8. Frontend
 
@@ -417,7 +506,7 @@ el inspector puede hacer.
 
 ## 9. Pruebas
 
-Backend MSTest + Moq + FluentAssertions, **≈68 nuevos → ~208 totales**.
+Backend MSTest + Moq + FluentAssertions, **≈73 nuevos → ~213 totales**.
 
 | Área | Tests | Casos que no pueden fallar |
 |---|---:|---|
@@ -427,7 +516,7 @@ Backend MSTest + Moq + FluentAssertions, **≈68 nuevos → ~208 totales**.
 | Bloques contiguos | 6 | una corrida; dos corridas (mañana/tarde); franja suelta; corte por hueco; orden sucio en BD; franjas de distinta duración |
 | `FranjaService` | 6 | no desactivar franja con horario activo; no crear franja Z solapada; `hora_inicio >= hora_fin` |
 | `HorarioService` | 8 | revive de fila soft-deleted; `idEspacio` siempre NULL; grid con día sin calendario |
-| `HorarioRangoService` | 8 | fecha ausente en `fechas_horarios` se reporta y **no** aborta el lote; rango fuera de `fecha_inicial..fecha_fin`; rango invertido; lote vacío |
+| `HorarioRangoService` | 13 | fecha ausente en `fechas_horarios` se reporta y **no** aborta el lote; rango fuera de la ventana; rango invertido; lote vacío; **tope de 16 semanas**; **tope de 500 filas, rechazado antes de abrir la transacción**; asignación sin ventana acepta rango explícito con advertencia |
 | `SesionService` (cambios) | 8 | `diasRetraso` congelado y no recalculado al editar; fecha futura 422; modo libre; `idHorarioInicio` de otra asignación 403; idempotencia |
 | `AgendaService` + reportes | 9 | estados por bloque; días pasados sin sesión |
 
@@ -449,7 +538,7 @@ registrar, que dependen de esto.
 | M4b-2 | `ConflictoHorarioService` | 18 tests |
 | M4b-3 | `FranjaService` + `/api/franjas` | 6 tests |
 | M4b-4 | `HorarioService` + grid + celda + `/api/paralelos` | 8 tests |
-| M4b-5 | `HorarioRangoService` + replicar/editar/eliminar rango | 8 tests |
+| M4b-5 | `HorarioRangoService` + replicar/editar/eliminar rango + topes | 13 tests |
 | M4b-6 | Migración 005 + sesión anclada + agenda + tardanza | 17 tests |
 | M4b-7 | Frontend inspector: franjas, grid, panel, replicar | `npm test && npm run lint && npm run build` limpios |
 | M4b-8 | Frontend docente: agenda + reportes de tardías | 36 tests frontend |
