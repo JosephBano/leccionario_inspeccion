@@ -46,6 +46,19 @@ public sealed class SesionDto
     public string? Observacion { get; init; }
     public required string Estado { get; init; }
     public DateTime? FechaCierre { get; init; }
+
+    /// <summary>"horario" si la sesión cuelga de una celda planificada; "libre" si no.</summary>
+    public string Origen { get; init; } = "libre";
+
+    /// <summary>Se registró después del día de clase. Congelado al crear.</summary>
+    public bool EsTardia { get; init; }
+
+    /// <summary>Días entre la clase y el primer guardado. Congelado al crear.</summary>
+    public int DiasRetraso { get; init; }
+
+    public int? FranjasPlanificadas { get; init; }
+    public int? MinutosPlanificados { get; init; }
+
     public required IReadOnlyList<MarcaSesionDto> Asistencias { get; init; }
 }
 
@@ -62,7 +75,8 @@ public sealed class MarcaSesionDto
 /// <summary>Cuerpo de <c>POST /api/paralelos/{idAsignacion}/sesiones</c>.</summary>
 public sealed class CrearSesionRequestDto
 {
-    public required DateOnly Fecha { get; init; }
+    public int? IdHorarioInicio { get; init; }
+    public DateOnly Fecha { get; init; }
     public required string Tema { get; init; }
     public string? Observacion { get; init; }
     public sbyte NumeroBloque { get; init; } = 1;

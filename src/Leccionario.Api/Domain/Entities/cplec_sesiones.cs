@@ -1,6 +1,6 @@
 #nullable enable
 #pragma warning disable CS8981
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Leccionario.Api.Domain.Entities;
@@ -27,6 +27,12 @@ public partial class cplec_sesiones
     /// </summary>
     public sbyte numeroBloque { get; set; }
 
+    public int? idHorarioInicio { get; set; }
+
+    public sbyte? franjasPlanificadas { get; set; }
+
+    public short? minutosPlanificados { get; set; }
+
     /// <summary>
     /// Tema general de la clase — el leccionario propiamente dicho
     /// </summary>
@@ -43,6 +49,10 @@ public partial class cplec_sesiones
     public string estado { get; set; } = null!;
 
     public DateTime? fechaCierre { get; set; }
+
+    public bool esTardia { get; set; }
+
+    public short diasRetraso { get; set; }
 
     public bool? activo { get; set; }
 
@@ -62,4 +72,6 @@ public partial class cplec_sesiones
     public virtual asignaciones_profesores idAsignacionNavigation { get; set; } = null!;
 
     public virtual fechas_horarios idFechaNavigation { get; set; } = null!;
+
+    public virtual horario_detalle? idHorarioInicioNavigation { get; set; }
 }

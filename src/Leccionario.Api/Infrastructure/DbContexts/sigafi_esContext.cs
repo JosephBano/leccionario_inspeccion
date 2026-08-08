@@ -332,12 +332,20 @@ public partial class sigafi_esContext : DbContext
 
             entity.HasIndex(e => e.idFecha, "ix_cplec_sesiones_fecha");
 
+            entity.HasIndex(e => new { e.esTardia, e.idFecha }, "ix_cplec_sesiones_tardias");
+
             entity.HasIndex(e => new { e.idAsignacion, e.idFecha, e.numeroBloque }, "uq_cplec_sesiones_asignacion_fecha_bloque").IsUnique();
 
             entity.Property(e => e.idSesion).HasColumnType("int(11)");
             entity.Property(e => e.activo)
                 .IsRequired()
                 .HasDefaultValueSql("'1'");
+            entity.Property(e => e.diasRetraso)
+                .HasComment("Dias entre la clase y el primer guardado. Congelado al crear.")
+                .HasColumnType("smallint(6)");
+            entity.Property(e => e.esTardia)
+                .HasComment("Se registro despues del dia de clase. Congelado al crear.")
+                .HasColumnType("tinyint(1)");
             entity.Property(e => e.estado)
                 .HasDefaultValueSql("'borrador'")
                 .HasComment("cerrada = congelada; solo un inspector puede reabrirla")
@@ -349,12 +357,21 @@ public partial class sigafi_esContext : DbContext
             entity.Property(e => e.fechaCreacion)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
+            entity.Property(e => e.franjasPlanificadas)
+                .HasComment("Cuantas franjas cubre el bloque")
+                .HasColumnType("tinyint(4)");
             entity.Property(e => e.idAsignacion)
                 .HasComment("FK asignaciones_profesores.idAsignacion (columna UNIQUE, no la PK compuesta)")
                 .HasColumnType("int(11)");
             entity.Property(e => e.idFecha)
                 .HasComment("FK fechas_horarios.idFecha — el dia de la clase")
                 .HasColumnType("int(11)");
+            entity.Property(e => e.idHorarioInicio)
+                .HasComment("FK horario_detalle.idHorario — identidad estable del bloque contiguo")
+                .HasColumnType("int(11)");
+            entity.Property(e => e.minutosPlanificados)
+                .HasComment("Suma de horas_clases.minutos del bloque")
+                .HasColumnType("smallint(6)");
             entity.Property(e => e.numeroBloque)
                 .HasDefaultValueSql("'1'")
                 .HasComment("Orden de la clase dentro del dia. Normalmente 1.")
@@ -380,6 +397,10 @@ public partial class sigafi_esContext : DbContext
                 .HasForeignKey(d => d.idFecha)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_cplec_sesiones_fecha");
+
+            entity.HasOne(d => d.idHorarioInicioNavigation).WithMany()
+                .HasForeignKey(d => d.idHorarioInicio)
+                .HasConstraintName("fk_cplec_sesiones_horario");
         });
 
         modelBuilder.Entity<cursos>(entity =>

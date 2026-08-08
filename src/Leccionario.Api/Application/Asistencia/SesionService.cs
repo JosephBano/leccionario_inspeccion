@@ -1,6 +1,7 @@
 using Leccionario.Api.Application.Asistencia.Services;
 using Leccionario.Api.Application.Common.Exceptions;
 using Leccionario.Api.Application.Distributivo;
+using Leccionario.Api.Application.Horarios.Services;
 using Leccionario.Api.Domain.Entities;
 using Leccionario.Api.Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
@@ -90,14 +91,36 @@ public sealed class SesionService : ISesionService
             esInspector,
             ct);
 
-        // Resolver idFecha desde fechas_horarios (calendario institucional).
-        var idFecha = await _db.fechas_horarios
-            .Where(f => f.fecha == request.Fecha)
-            .Select(f => (int?)f.idFecha)
-            .FirstOrDefaultAsync(ct);
+        // ---- Anclaje al horario (ADR-008 decisiones 7 y 9) -----------------------
+        var (tieneHorario, bloques) = await ResolverBloquesAsync(idAsignacion, request.IdHorarioInicio, ct);
 
-        if (idFecha is null)
-            throw new ValidacionException($"La fecha {request.Fecha:yyyy-MM-dd} no existe en el calendario institucional.");
+        int idFecha;
+        int numeroBloque;
+        BloqueHorario? bloque = null;
+
+        if (tieneHorario)
+        {
+            if (request.IdHorarioInicio is null)
+                throw new HorarioRequeridoException();
+
+            bloque = bloques.FirstOrDefault(b => b.IdHorarioInicio == request.IdHorarioInicio)
+                ?? throw new DistributivoAjenoException();
+
+            idFecha = await IdFechaDelHorarioAsync(request.IdHorarioInicio.Value, ct);
+            numeroBloque = bloque.NumeroBloque;
+        }
+        else
+        {
+            // Modo transición: la asignación no tiene horario cargado.
+            idFecha = await ResolverIdFechaLibreAsync(request.Fecha, ct);
+            numeroBloque = request.NumeroBloque;
+        }
+
+        var fechaClase = await FechaDeAsync(idFecha, ct);
+        var hoy = DateOnly.FromDateTime(_reloj.GetUtcNow().LocalDateTime);
+
+        if (fechaClase > hoy)
+            throw new SesionFuturaException();
 
         // Validar ventana de la asignación.
         var ap = await _db.asignaciones_profesores
@@ -105,8 +128,8 @@ public sealed class SesionService : ISesionService
             .FirstOrDefaultAsync(x => x.idAsignacion == idAsignacion, ct)
             ?? throw new NoEncontradoException("La asignación solicitada no existe.");
 
-        if (ap.fecha_inicial.HasValue && request.Fecha < ap.fecha_inicial.Value
-            || ap.fecha_fin.HasValue && request.Fecha > ap.fecha_fin.Value)
+        if (ap.fecha_inicial.HasValue && fechaClase < ap.fecha_inicial.Value
+            || ap.fecha_fin.HasValue && fechaClase > ap.fecha_fin.Value)
         {
             throw new FueraDeVentanaException();
         }
@@ -115,18 +138,26 @@ public sealed class SesionService : ISesionService
         var existente = await _db.cplec_sesiones
             .FirstOrDefaultAsync(s =>
                 s.idAsignacion == idAsignacion
-                && s.idFecha == idFecha.Value
-                && s.numeroBloque == request.NumeroBloque, ct);
+                && s.idFecha == idFecha
+                && s.numeroBloque == numeroBloque, ct);
 
         if (existente is not null)
             return await MapearSesionAsync(existente.idSesion, ct);
+
+        // Congelado: mide el PRIMER guardado, no el último. Ver ADR-008 decisión 8.
+        var diasRetraso = Math.Max(0, hoy.DayNumber - fechaClase.DayNumber);
 
         // Crear nueva sesión precargada con la nómina en "presente".
         var sesion = new cplec_sesiones
         {
             idAsignacion = idAsignacion,
-            idFecha = idFecha.Value,
-            numeroBloque = request.NumeroBloque,
+            idFecha = idFecha,
+            numeroBloque = (sbyte)numeroBloque,
+            idHorarioInicio = bloque?.IdHorarioInicio,
+            franjasPlanificadas = (sbyte?)bloque?.FranjasPlanificadas,
+            minutosPlanificados = (short?)bloque?.MinutosPlanificados,
+            esTardia = diasRetraso > 0,
+            diasRetraso = (short)diasRetraso,
             tema = request.Tema.Trim(),
             observacion = request.Observacion?.Trim(),
             estado = EstadoSesion.Borrador,
@@ -292,7 +323,85 @@ public sealed class SesionService : ISesionService
             Observacion = s.observacion,
             Estado = s.estado,
             FechaCierre = s.fechaCierre,
+            Origen = s.idHorarioInicio.HasValue ? "horario" : "libre",
+            EsTardia = s.esTardia,
+            DiasRetraso = s.diasRetraso,
+            FranjasPlanificadas = s.franjasPlanificadas,
+            MinutosPlanificados = s.minutosPlanificados,
             Asistencias = marcas
         };
     }
+
+    /// <summary>
+    /// Bloques contiguos de la asignación en el día del <c>idHorarioInicio</c> pedido.
+    /// Devuelve tieneHorario = false si la asignación no tiene ningún horario activo, que es
+    /// la señal del modo transición.
+    /// </summary>
+    private async Task<(bool TieneHorario, IReadOnlyList<BloqueHorario> Bloques)> ResolverBloquesAsync(
+        int idAsignacion, int? idHorarioInicio, CancellationToken ct)
+    {
+        var tieneHorario = await _db.horario_detalle
+            .AsNoTracking()
+            .AnyAsync(h => h.idAsignacion == idAsignacion && h.activo == 1, ct);
+
+        if (!tieneHorario)
+            return (false, Array.Empty<BloqueHorario>());
+
+        if (idHorarioInicio is null)
+            return (true, Array.Empty<BloqueHorario>());
+
+        var idFecha = await _db.horario_detalle
+            .AsNoTracking()
+            .Where(h => h.idHorario == idHorarioInicio)
+            .Select(h => (int?)h.idFecha)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NoEncontradoException("La celda de horario no existe.");
+
+        var filas = await (
+            from hd in _db.horario_detalle.AsNoTracking()
+            join hc in _db.horas_clases.AsNoTracking() on hd.idhora equals hc.idhora
+            where hd.idAsignacion == idAsignacion && hd.idFecha == idFecha && hd.activo == 1
+            select new { hd.idHorario, hd.idhora, hc.hora_inicio, hc.hora_fin, hc.minutos })
+            .ToListAsync(ct);
+
+        var franjas = filas
+            .Select(f =>
+            {
+                if (!TimeOnly.TryParse(f.hora_inicio, out var ini) ||
+                    !TimeOnly.TryParse(f.hora_fin, out var fin) || ini >= fin)
+                    return null;
+                return new FranjaOrdenable(f.idHorario, f.idhora, ini, fin,
+                    f.minutos ?? (int)(fin - ini).TotalMinutes);
+            })
+            .Where(f => f is not null)
+            .Select(f => f!);
+
+        return (true, BloqueHorarioCalculator.Agrupar(franjas));
+    }
+
+    private async Task<int> ResolverIdFechaLibreAsync(DateOnly fecha, CancellationToken ct)
+    {
+        var idFecha = await _db.fechas_horarios.AsNoTracking()
+            .Where(f => f.fecha == fecha)
+            .Select(f => (int?)f.idFecha)
+            .FirstOrDefaultAsync(ct);
+
+        if (idFecha is null)
+            throw new ValidacionException($"La fecha {fecha:yyyy-MM-dd} no existe en el calendario institucional.");
+
+        return idFecha.Value;
+    }
+
+    private Task<int> IdFechaDelHorarioAsync(int idHorario, CancellationToken ct) =>
+        _db.horario_detalle.AsNoTracking()
+            .Where(h => h.idHorario == idHorario)
+            .Select(h => h.idFecha)
+            .FirstAsync(ct);
+
+    private async Task<DateOnly> FechaDeAsync(int idFecha, CancellationToken ct) =>
+        await _db.fechas_horarios.AsNoTracking()
+            .Where(f => f.idFecha == idFecha)
+            .Select(f => f.fecha)
+            .FirstOrDefaultAsync(ct)
+        ?? throw new ValidacionException("La fecha no existe en el calendario institucional.");
 }
