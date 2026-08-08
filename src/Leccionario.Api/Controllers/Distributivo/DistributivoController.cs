@@ -34,8 +34,10 @@ public sealed class DistributivoController : ControllerBase
     private bool EsInspector => User.IsInRole("cplec_inspector");
 
     /// <summary>
-    /// Una fila por nivel (tipo de licencia) de la carrera 6, con el período
-    /// más reciente de cada nivel. Para un docente, se limita a los niveles
+    /// Períodos vigentes, futuros o cerrados recientemente (ver
+    /// <see cref="Leccionario.Api.Application.Distributivo.PeriodosPorNivelService.MesesVisibilidadCierre"/>),
+    /// agrupados por nivel (tipo de licencia) de la carrera 6. Puede haber
+    /// más de una fila por nivel. Para un docente, se limita a los niveles
     /// en los que tiene distributivo. Inspector: ve todos.
     /// </summary>
     [HttpGet("periodos/por-nivel")]
@@ -62,6 +64,14 @@ public sealed class DistributivoController : ControllerBase
         return Ok(new MisParalelosResponseDto(items));
     }
 
+    /// <summary>Lista de períodos académicos de la carrera 6.</summary>
+    [HttpGet("periodos")]
+    [ProducesResponseType(typeof(IReadOnlyList<PeriodoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Periodos(
+        [FromQuery] bool soloVigentes = false,
+        CancellationToken ct = default) =>
+        Ok(await _paralelos.ListarPeriodosAsync(soloVigentes, ct));
+
     /// <summary>Todos los paralelos de la carrera 6. Solo inspector.</summary>
     [HttpGet("paralelos")]
     [Authorize(Roles = "cplec_inspector")]
@@ -71,6 +81,19 @@ public sealed class DistributivoController : ControllerBase
         [FromQuery] bool soloVigentes,
         CancellationToken ct) =>
         Ok(await _paralelos.ListarAsync(idPeriodo, soloVigentes, ct));
+
+    /// <summary>Asignaciones de un paralelo. Solo inspector.</summary>
+    [HttpGet("paralelos/asignaciones")]
+    [Authorize(Roles = "cplec_inspector")]
+    [ProducesResponseType(typeof(IReadOnlyList<AsignacionParaleloDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Asignaciones(
+        [FromQuery] string idPeriodo,
+        [FromQuery] int idNivel,
+        [FromQuery] int idSeccion,
+        [FromQuery] int idModalidad,
+        [FromQuery] string paralelo,
+        CancellationToken ct) =>
+        Ok(await _paralelos.ObtenerAsignacionesAsync(idPeriodo, idNivel, idSeccion, idModalidad, paralelo, ct));
 
     /// <summary>
     /// Nómina de alumnos de un paralelo. Docente: solo suyos (validado por

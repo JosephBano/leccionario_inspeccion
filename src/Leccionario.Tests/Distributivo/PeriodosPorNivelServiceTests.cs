@@ -100,8 +100,12 @@ public sealed class PeriodosPorNivelServiceTests
             paralelo = "A",
             activo = 1,
             esActivaAsignacion = 1,
-            fecha_inicial = new DateOnly(2024, 1, 1),
-            fecha_fin = new DateOnly(2024, 12, 31)
+            // Ref = 2026-08-07; cerrado hace 2 meses, dentro de la ventana de
+            // visibilidad de 6 meses (ver Resolver_PeriodoCerradoDentroDeSeisMeses_SigueVisible
+            // y Resolver_MismoNivelDosPeriodos_CerradoFueraDeVentana_SoloDevuelveElVigente
+            // para los casos de borde de esa ventana).
+            fecha_inicial = new DateOnly(2026, 5, 1),
+            fecha_fin = new DateOnly(2026, 6, 1)
         });
         await db.SaveChangesAsync();
 
@@ -140,9 +144,9 @@ public sealed class PeriodosPorNivelServiceTests
     }
 
     [TestMethod]
-    public async Task Resolver_MismoNivelDosPeriodos_TomaElMasReciente()
+    public async Task Resolver_MismoNivelDosPeriodos_CerradoFueraDeVentana_SoloDevuelveElVigente()
     {
-        using var db = CrearContexto(nameof(Resolver_MismoNivelDosPeriodos_TomaElMasReciente));
+        using var db = CrearContexto(nameof(Resolver_MismoNivelDosPeriodos_CerradoFueraDeVentana_SoloDevuelveElVigente));
         db.cursos.Add(new cursos { idNivel = 35, idCarrera = 6, Nivel = "TIPO \"C\"" });
         db.periodos.AddRange(
             new periodos { idPeriodo = "OLD0001" },
@@ -157,6 +161,58 @@ public sealed class PeriodosPorNivelServiceTests
 
         items.Should().HaveCount(1);
         items[0].IdPeriodo.Should().Be("NEW0001");
+    }
+
+    [TestMethod]
+    public async Task Resolver_PeriodoCerradoDentroDeSeisMeses_SigueVisible()
+    {
+        using var db = CrearContexto(nameof(Resolver_PeriodoCerradoDentroDeSeisMeses_SigueVisible));
+        db.cursos.Add(new cursos { idNivel = 35, idCarrera = 6, Nivel = "TIPO \"C\"" });
+        db.periodos.Add(new periodos { idPeriodo = "REC0001" });
+        db.asignaciones_profesores.Add(new asignaciones_profesores
+        {
+            idAsignacion = 1,
+            idProfesor = "0000000001",
+            idAsignatura = 1,
+            idPeriodo = "REC0001",
+            idNivel = 35,
+            idSeccion = 1,
+            idModalidad = 1,
+            paralelo = "A",
+            activo = 1,
+            esActivaAsignacion = 1,
+            // Ref = 2026-08-07; cerrado hace 3 meses (< 6), debe verse.
+            fecha_inicial = new DateOnly(2026, 4, 1),
+            fecha_fin = new DateOnly(2026, 5, 1)
+        });
+        await db.SaveChangesAsync();
+
+        var items = await new PeriodosPorNivelService(db).ResolverAsync(null, Ref);
+
+        items.Should().HaveCount(1);
+        items[0].Vigencia.Should().Be("CERRADO");
+    }
+
+    [TestMethod]
+    public async Task Resolver_MismoNivelVigenteYFuturo_DevuelveAmbos()
+    {
+        using var db = CrearContexto(nameof(Resolver_MismoNivelVigenteYFuturo_DevuelveAmbos));
+        db.cursos.Add(new cursos { idNivel = 35, idCarrera = 6, Nivel = "TIPO \"C\"" });
+        db.periodos.AddRange(
+            new periodos { idPeriodo = "VIG0001" },
+            new periodos { idPeriodo = "FUT0001" });
+        db.asignaciones_profesores.AddRange(
+            new asignaciones_profesores { idAsignacion = 1, idProfesor = "0000000001", idAsignatura = 1, idPeriodo = "VIG0001", idNivel = 35, idSeccion = 1, idModalidad = 1, paralelo = "A", activo = 1, esActivaAsignacion = 1, fecha_inicial = new DateOnly(2026, 1, 1), fecha_fin = new DateOnly(2026, 12, 31) },
+            new asignaciones_profesores { idAsignacion = 2, idProfesor = "0000000001", idAsignatura = 1, idPeriodo = "FUT0001", idNivel = 35, idSeccion = 1, idModalidad = 1, paralelo = "A", activo = 1, esActivaAsignacion = 1, fecha_inicial = new DateOnly(2027, 1, 1), fecha_fin = new DateOnly(2027, 12, 31) }
+        );
+        await db.SaveChangesAsync();
+
+        var items = await new PeriodosPorNivelService(db).ResolverAsync(null, Ref);
+
+        items.Should().HaveCount(2);
+        items.Select(i => i.IdPeriodo).Should().BeEquivalentTo("VIG0001", "FUT0001");
+        items.Single(i => i.IdPeriodo == "VIG0001").Vigencia.Should().Be("VIGENTE");
+        items.Single(i => i.IdPeriodo == "FUT0001").Vigencia.Should().Be("FUTURO");
     }
 
     [TestMethod]

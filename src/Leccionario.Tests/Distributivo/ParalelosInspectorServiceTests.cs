@@ -97,4 +97,68 @@ public sealed class ParalelosInspectorServiceTests
 
         r.Should().ContainSingle().Which.Paralelo.Should().Be("A");
     }
+
+    [TestMethod]
+    public async Task ObtenerAsignaciones_FiltraPorTuplaCompletaYDevuelveDocenteYFechas()
+    {
+        using var db = CrearContexto(nameof(ObtenerAsignaciones_FiltraPorTuplaCompletaYDevuelveDocenteYFechas));
+        await SembrarAsync(db);
+
+        db.asignaturas.Add(new asignaturas { idAsignatura = 10, asignatura = "LEGISLACION", anulada = false });
+        db.profesores.Add(new profesores { idProfesor = "DOC01", nombres = "CARLOS", apellidos = "MENDOZA", tipoSangre = "ORH+" });
+
+        var a1 = new AsignacionBuilder()
+            .ConId(100)
+            .ConNivel(NivelC6)
+            .ConParalelo("A ")
+            .EnPeriodo("OCC2025")
+            .Build();
+        a1.idAsignatura = 10;
+        a1.idProfesor = "DOC01";
+        a1.fecha_inicial = null;
+        a1.fecha_fin = null;
+
+        var a2 = new AsignacionBuilder()
+            .ConId(101)
+            .ConNivel(NivelC6)
+            .ConParalelo("B")
+            .EnPeriodo("OCC2025")
+            .Build();
+
+        db.asignaciones_profesores.AddRange(a1, a2);
+        await db.SaveChangesAsync();
+
+        var service = new ParalelosInspectorService(db);
+        var res = await service.ObtenerAsignacionesAsync("OCC2025", NivelC6, 1, 1, "A");
+
+        res.Should().HaveCount(1);
+        var item = res.First();
+        item.IdAsignacion.Should().Be(100);
+        item.Asignatura.Should().Be("LEGISLACION");
+        item.IdProfesor.Should().Be("DOC01");
+        item.NombreDocente.Should().Be("MENDOZA CARLOS");
+        item.FechaInicial.Should().BeNull();
+        item.FechaFin.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task ListarPeriodos_DevuelvePeriodosCarrera6()
+    {
+        using var db = CrearContexto(nameof(ListarPeriodos_DevuelvePeriodosCarrera6));
+        await SembrarAsync(db);
+
+        db.periodos.Add(new periodos { idPeriodo = "VIEJO", detalle = "Periodo Viejo", fecha_inicial = new DateOnly(2024, 1, 1) });
+        db.periodos.Add(new periodos { idPeriodo = "NUEVO", detalle = "Periodo Nuevo", fecha_inicial = new DateOnly(2026, 8, 1) });
+
+        var a1 = new AsignacionBuilder().ConId(200).ConNivel(NivelC6).EnPeriodo("VIEJO").Build();
+        var a2 = new AsignacionBuilder().ConId(201).ConNivel(NivelC6).EnPeriodo("NUEVO").Build();
+        db.asignaciones_profesores.AddRange(a1, a2);
+        await db.SaveChangesAsync();
+
+        var service = new ParalelosInspectorService(db);
+        var res = await service.ListarPeriodosAsync();
+
+        res.Should().NotBeEmpty();
+        res.First().IdPeriodo.Should().Be("NUEVO");
+    }
 }
