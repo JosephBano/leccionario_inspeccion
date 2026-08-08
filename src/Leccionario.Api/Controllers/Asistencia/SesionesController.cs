@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Leccionario.Api.Application.Asistencia;
+using Leccionario.Api.Application.Asistencia.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,11 +15,29 @@ public sealed class SesionesController : ControllerBase
 {
     private readonly ISesionService _sesiones;
     private readonly IAsistenciaService _asistencia;
+    private readonly IAgendaService _agenda;
+    private readonly IDistributivoGuard _guard;
 
-    public SesionesController(ISesionService sesiones, IAsistenciaService asistencia)
+    public SesionesController(
+        ISesionService sesiones,
+        IAsistenciaService asistencia,
+        IAgendaService agenda,
+        IDistributivoGuard guard)
     {
         _sesiones = sesiones;
         _asistencia = asistencia;
+        _agenda = agenda;
+        _guard = guard;
+    }
+
+    /// <summary>Días con horario y su estado de registro.</summary>
+    [HttpGet("paralelos/{idAsignacion:int}/agenda")]
+    [ProducesResponseType(typeof(IReadOnlyList<BloqueAgendaDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Agenda(
+        int idAsignacion, [FromQuery] DateOnly desde, [FromQuery] DateOnly hasta, CancellationToken ct)
+    {
+        await _guard.EnsureDocenteTieneAsignacionAsync(IdProfesorSub ?? string.Empty, idAsignacion, EsInspector, ct);
+        return Ok(await _agenda.ObtenerAgendaAsync(idAsignacion, desde, hasta, ct));
     }
 
     private string? IdProfesorSub => User.FindFirstValue("sub");
