@@ -61,6 +61,7 @@ export class AuthService {
   readonly usuario = this._usuario.asReadonly();
   readonly perfil = this._perfil.asReadonly();
   readonly isAuthenticated = computed(() => this._accessToken() !== null);
+  readonly hasSession = computed(() => this._refreshToken() !== null);
   readonly esDocente = computed(() => this.tieneRol(Roles.docente));
   readonly esInspector = computed(() => this.tieneRol(Roles.inspector));
   readonly rolPrincipal = computed<Role | null>(() => {

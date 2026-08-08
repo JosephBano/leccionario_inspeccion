@@ -23,11 +23,12 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     provideAppInitializer(async () => {
       const auth = inject(AuthService);
-      if (auth.isAuthenticated()) {
+      if (auth.hasSession()) {
         try {
+          await auth.refresh();
           await auth.cargarMiPerfil();
         } catch {
-          // Si falla la hidratación (token revocado), el refresh del interceptor lo maneja.
+          // Token revocado o expirado — auth.refresh() limpia storage automáticamente
         }
       }
     }),
