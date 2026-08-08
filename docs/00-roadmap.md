@@ -51,6 +51,7 @@ Leyenda: ✅ Done · ⛔ Next inmediato · 🔜 Siguiente fase · ⏳ Backlog ·
 | **M3d**| `MiPerfil` con paralelos reales                         |   ✅   | (en `dv_jb`) `feature/mi-perfil-paralelos`         | `GET /api/auth/me` consume `IMisParalelosService` y devuelve la nómina de paralelos del distributivo; inspectores ven lista vacía; 2 tests nuevos.            | M3c           |
 | **M4** | Frontend Angular 21 + login + pasar lista              |   ✅   | (en `dv_jb`) `feature/frontend-bootstrap`       | `client/` con Angular 21 (standalone, signals, Vitest, Material); login funcional con refresh + interceptor + guards; mis paralelos y pasar lista ligados a M3; 24 tests frontend verdes; `npm run lint` y `npm run build` sin warnings. | M3d + `docs/06` actualizado |
 | **M4b**| Horarios del inspector — backend                        |   ✅   | (en `dv_jb`) commit `abfc863`                    | 13 tareas TDD completadas, 91 tests nuevos (239 tests backend verdes total). Grid de horarios, CRUD de franjas Z, validación de solapamiento, operaciones por rango con topes, anclaje de sesión al horario, tardanza congelada y reportes del inspector. | M3c + ADR-008 |
+| **M4c**| Horario del docente + asistencia anclada al bloque       |   ✅   | (en `dv_jb`) `feature/asistencia-anclada-horario` | `GET /api/mi-horario`; `SIN_HORARIO` retira el modo transición de ADR-008 §9; `AgendaService` por lote sin N+1; página `mi-horario` con grid semanal; `pasar-lista` exige `idHorarioInicio`. | M4b |
 | **M5** | Reportes inspector + exportación XLSX/PDF              |   ⏳   | (a crear) `feature/reportes-core`               | Endpoints `/api/reportes/*` (por paralelo, por estudiante, por docente, resumen); UI inspector; exportación XLSX/PDF con `?formato=`.                                                                                    | M4 + M4b      |
 | **M6** | Auditoría persistente + CI gate con cobertura          |   ⏳   | (a crear) `feature/auditoria-bd`                 | `AuditMiddleware` escribe en `gest_audit_registros`; CI exige cobertura mínima (umbral a definir en ADR).                                                                                                            | M3            |
 | **Prod** | Despliegue a producción `sigafi_es`                  |   ⏔   | —                                               | Backup verificado; 001–003 aplicadas en orden; rollback probado; sin secretos en repo; smoke test de `/api/auth/me` con persona real.                                                                                  | M3 + M5 (parcial) |
@@ -69,9 +70,10 @@ flowchart LR
   M3b --> M3c[M3c: Sesiones + asistencia<br/>POST + transacción + historial]
   M3c --> M3d[M3d: /api/auth/me<br/>con paralelos reales]
   M3d --> M4[M4: Frontend Angular 21<br/>+ login + pasar lista]
-  M3d --> M5[M5: Reportes inspector]
   M3d --> M6[M6: Auditoría BD + CI gate]
-  M4 --> M5
+  M4 --> M4b[M4b: Horarios inspector]
+  M4b --> M4c[M4c: Mi horario docente<br/>+ asistencia anclada]
+  M4c --> M5[M5: Reportes inspector]
   M5 --> Prod[Prod: deploy sigafi_es]
   M6 --> Prod
 ```

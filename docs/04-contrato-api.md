@@ -44,6 +44,9 @@ Uniforme para toda la API, generado por `ApiExceptionMiddleware`:
 | 409 | `SESION_DUPLICADA` | Ya existe una sesión para esa asignación/fecha/bloque |
 | 422 | `MATRICULA_AJENA` | Un `idMatricula` enviado no pertenece a ese paralelo |
 | 422 | `FUERA_DE_VENTANA` | La fecha cae fuera de `fecha_inicial .. fecha_fin` de la asignación |
+| 422 | `SIN_HORARIO` | El paralelo no tiene horario planificado: no se puede registrar asistencia |
+| 422 | `HORARIO_REQUERIDO` | El paralelo tiene horario: falta `idHorarioInicio` en el request |
+| 422 | `RANGO_EXCEDE_TOPE` | El rango de fechas pedido supera las 16 semanas |
 | 429 | `DEMASIADAS_PETICIONES` | Rate limiting |
 | 500 | `ERROR_INTERNO` | Nunca expone el mensaje de la excepción al cliente |
 
@@ -154,6 +157,44 @@ período activo" del sistema, existe uno por nivel.
 Detalle e implementación en
 [`10-navegacion-distributivo.md`](10-navegacion-distributivo.md) sección Paso 5.
 
+### `GET /api/mi-horario?desde=2026-08-03&hasta=2026-08-09`
+Rol: `cplec_docente`. El horario propio del docente. **No recibe `idAsignacion`**: el
+alcance sale del claim `sub`.
+
+- `desde` y `hasta` son opcionales, pero van juntos: o ambos, o ninguno. Sin ellos,
+  la semana en curso (lunes a domingo).
+- Tope de **16 semanas** entre ambos → `422 RANGO_EXCEDE_TOPE`.
+- `desde > hasta` → `400 VALIDACION`.
+- Solo asignaciones **vigentes**: la ventana `fecha_inicial .. fecha_fin` cubre `desde`,
+  con 15 días de gracia después de `fecha_fin`; ventana `NULL` cuenta como vigente.
+  **No se usa `periodos.activo`**, que está en 1 hasta en períodos de 2022.
+
+```json
+[
+  {
+    "idAsignacion": 41822,
+    "tipoLicencia": "C",
+    "jornada": "MATUTINA",
+    "paralelo": "A",
+    "asignatura": "Normativa de tránsito",
+    "fecha": "2026-08-04",
+    "dia": "Martes",
+    "idHorarioInicio": 90311,
+    "numeroBloque": 1,
+    "horaInicio": "07:00",
+    "horaFin": "09:00",
+    "franjasPlanificadas": 2,
+    "minutosPlanificados": 120,
+    "estado": "Pendiente",
+    "idSesion": null,
+    "diasRetraso": 4
+  }
+]
+```
+
+`estado`: `Pendiente` (pasada, sin sesión) · `Borrador` (sesión abierta) · `Cerrada` ·
+`Futura` (aún no ocurre; no se puede registrar).
+
 ### `GET /api/paralelos/{idAsignacion}/alumnos`
 Roles: `cplec_docente` (solo suyos) · `cplec_inspector` (cualquiera).
 Devuelve la nómina: `idMatricula`, `idAlumno`, `apellidos`, `nombres`, `retirado`.
@@ -165,31 +206,35 @@ Devuelve la nómina: `idMatricula`, `idAlumno`, `apellidos`, `nombres`, `retirad
 ## Sesiones de clase
 
 ### `POST /api/paralelos/{idAsignacion}/sesiones`
-Rol: `cplec_docente`. Crea la clase del día.
+Rol: `cplec_docente`. Abre la clase de un **bloque de horario**.
 
 ```json
 // request
 {
-  "fecha": "2026-08-06",
+  "idHorarioInicio": 90311,
   "tema": "Señalización vertical y horizontal",
-  "observacion": "Faltó el proyector; se usó pizarra",
-  "numeroBloque": 1
+  "observacion": "Faltó el proyector; se usó pizarra"
 }
 ```
 
+- `idHorarioInicio` es **obligatorio**: identifica el bloque planificado. La fecha y el
+  `numeroBloque` de la sesión se derivan de él — el cliente no los elige.
 - `tema` es **obligatorio** (máx. 250). Es el propósito del leccionario.
-- `numeroBloque` es opcional y por defecto `1`. Solo se envía si hay dos clases de la
-  misma asignación el mismo día.
-- `fecha` se traduce internamente a `fechas_horarios.idFecha`. Si el día no existe en el
-  calendario → `400 VALIDACION`.
-- **La fecha debe caer dentro de `asignaciones_profesores.fecha_inicial .. fecha_fin`**
-  de esa asignación → si no, `422 FUERA_DE_VENTANA` con el rango válido en `detalles`.
+- Si la asignación no tiene ninguna celda de horario activa → `422 SIN_HORARIO`. El
+  inspector debe cargar el horario primero. (Retira el modo transición de ADR-008 §9.)
+- Si la tiene pero falta `idHorarioInicio` → `422 HORARIO_REQUERIDO`.
+- Si el `idHorarioInicio` no pertenece a un bloque de esa asignación → `403 DISTRIBUTIVO_AJENO`.
+- La fecha del bloque debe caer dentro de `asignaciones_profesores.fecha_inicial .. fecha_fin`
+  → si no, `422 FUERA_DE_VENTANA`.
+- Un bloque futuro se rechaza.
+- **Idempotente**: si ya existe la tupla (`idAsignacion`, `idFecha`, `numeroBloque`),
+  devuelve la sesión existente en vez de fallar.
 - `201` con la sesión creada y la nómina precargada en `presente`.
-- Si ya existe esa (`idAsignacion`, `fecha`, `numeroBloque`) → `409 SESION_DUPLICADA`
-  con el `idSesion` existente en `detalles`, para que el cliente redirija en vez de fallar.
+- `origen` en la respuesta: `"horario"` en toda sesión nueva. `"libre"` solo aparece en
+  sesiones históricas creadas antes del 2026-08-08.
 
-No hay horas ni bloques horarios: el grano es el día. Ver
-[`10-navegacion-distributivo.md`](10-navegacion-distributivo.md).
+`fecha` y `numeroBloque` siguen aceptándose en el body por compatibilidad, pero **se
+ignoran**.
 
 ### `GET /api/sesiones/{idSesion}`
 La sesión con su lista completa de asistencia.

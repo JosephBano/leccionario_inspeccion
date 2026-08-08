@@ -248,6 +248,14 @@ Sin esto, el día del despliegue todos los paralelos sin horario cargado quedan 
 pasar lista. No es una vía de escape permanente: el inspector ve qué sesiones se crearon
 sin planificación.
 
+> **Addendum 2026-08-08 — el modo transición se retira.** Decisión del dueño del
+> producto: sin horario planificado no hay asistencia. `SesionService.CrearAsync`
+> responde `422 SIN_HORARIO` en vez de crear una sesión libre. `idHorarioInicio` sigue
+> siendo NULL-able en `cplec_sesiones` solo por las filas históricas, que se conservan
+> legibles y editables. Consecuencia aceptada: el inspector es prerequisito duro del
+> docente, y el despliegue exige tener cargados los horarios de los paralelos vigentes.
+> Ver `docs/superpowers/specs/2026-08-08-asistencia-anclada-horario-design.md`.
+
 ### 10. Alcance de lo que se porta
 
 Del módulo de `gestion_academica` entran: grid semanal, panel de asignación, replicación

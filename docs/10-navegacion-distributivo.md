@@ -224,19 +224,45 @@ para este propósito.
 
 ---
 
-## Paso 5 — Resolución del período: **un período por nivel, el más reciente**
+## Paso 5 — Resolución del período: **por nivel, con ventana de visibilidad**
 
 Los niveles de la carrera 6 (tipos de licencia) corren en calendarios **independientes**:
 TIPO "C" puede estar a mitad de período mientras TIPO "E" acaba de cerrar. No existe
-"el período activo" del sistema — existe uno **por nivel**.
+"el período activo" del sistema — existe uno (o varios) **por nivel**.
 
-Regla: para cada `idNivel` de la carrera 6, se toma el período con la asignación más
-reciente.
+Por eso se agrupa por `idNivel`: es la única forma de identificar correctamente qué
+período le corresponde a cada tipo de licencia. Es lo que responde `PeriodosPorNivelService`
+y lo que expone `GET /api/periodos/por-nivel`.
+
+**Regla de visibilidad (qué se considera "vigencia" aquí):** para cada `idNivel` se
+devuelve todo período que sea:
+
+- **VIGENTE** — hoy cae dentro de `fecha_inicial..fecha_fin`.
+- **FUTURO** — el período ya está cargado en el distributivo pero `fecha_inicial` todavía
+  no llega. Se muestra para que el docente/inspector lo anticipe, no se oculta.
+- **CERRADO**, pero solo si `fecha_fin` quedó dentro de los últimos
+  `PeriodosPorNivelService.MesesVisibilidadCierre` (6) meses. Un cierre más viejo que eso
+  ya no aporta al selector y solo agrega ruido.
+
+Períodos con `fecha_inicial`/`fecha_fin` en `NULL` (rango sin datos, ver CLAUDE.md) se
+tratan como `VIGENTE`: sin fechas no hay forma segura de excluirlos, así que se muestran
+siempre.
+
+Esto reemplaza la primera versión ("un período por nivel, el más reciente"): con esa
+regla, un período FUTURO ya cargado quedaba oculto detrás de uno VIGENTE, y un CERRADO
+de hace una semana desaparecía en cuanto había otro más nuevo. Ahora puede haber **más
+de una fila por nivel** — típicamente el VIGENTE y el FUTURO conviviendo mientras se
+carga el siguiente módulo.
 
 ### Consulta
 
-MySQL 5.7 no tiene funciones de ventana, así que el "máximo por grupo" se resuelve con
-una clave de ordenamiento compuesta dentro de un `HAVING` correlacionado:
+Este SQL queda como referencia histórica del Paso 1 (agrupar por `idNivel`/`idPeriodo`
+con `MIN`/`MAX` de fechas y conteos) y de la técnica de desempate — el `HAVING`
+correlacionado ya **no** se usa para quedarse con un solo período por nivel; ese filtro
+de "el más reciente" se reemplazó por la ventana de visibilidad de arriba, aplicada en
+memoria (ver `PeriodosPorNivelService.EsVisible`). MySQL 5.7 no tiene funciones de
+ventana, así que el "máximo por grupo" original se resolvía con una clave de
+ordenamiento compuesta dentro de un `HAVING` correlacionado:
 
 ```sql
 SELECT ap.idNivel,
@@ -274,7 +300,7 @@ HAVING CONCAT(DATE_FORMAT(MAX(ap.fecha_fin),     '%Y%m%d'),
 ORDER  BY fechaFin DESC, c.idNivel;
 ```
 
-### Resultado real (ejecutado el 2026-08-06)
+### Resultado real bajo la regla anterior (ejecutado el 2026-08-06, "el más reciente")
 
 | idNivel | Tipo de licencia | Período | Desde | Hasta | Vigencia | Asigs |
 |---|---|---|---|---|---|---|
@@ -285,41 +311,50 @@ ORDER  BY fechaFin DESC, c.idNivel;
 | 38 | TIPO "D" CONVALIDADA | `NDC2025` | 2026-01-22 | 2026-02-20 | CERRADO | 2 |
 | 64 | RECUPERACION PUNTOS | `ORP2025` | 2025-10-29 | 2025-10-30 | CERRADO | 1 |
 
-Exactamente 6 filas, una por nivel.
+Exactamente 6 filas, una por nivel — pero con la ventana de visibilidad todos estos
+cierres caen dentro de los 6 meses desde 2026-08-06, así que hoy el resultado es el
+mismo conjunto de filas (nada cambia salvo que, si apareciera un `OCT2026` cargado a
+futuro para el nivel 35, se mostraría **junto** a `OCC2025` en vez de reemplazarlo).
 
-### Dos detalles que no se pueden omitir
+### Detalles que no se pueden omitir
 
-**1. El desempate es obligatorio.** El nivel 37 tenía **dos** períodos con el mismo
-`fecha_fin` (`ENE2026` y `JUE2026`, ambos terminan 2026-07-31). Con un
-`HAVING MAX(fecha_fin) = (SELECT MAX(...))` simple, la consulta devuelve **7 filas** y
-el nivel 37 aparece duplicado. La clave compuesta desempata por:
+**1. El desempate por fila sigue siendo obligatorio.** El nivel 37 tenía **dos**
+períodos con el mismo `fecha_fin` (`ENE2026` y `JUE2026`, ambos terminan 2026-07-31).
+Sin un criterio de orden, dos ejecuciones podrían listar `JUE2026` antes o después de
+`ENE2026` de forma inconsistente. El orden se fija por:
 
 ```
-fecha_fin  →  fecha_inicial  →  idPeriodo
+idNivel  →  fecha_fin (desc)  →  fecha_inicial (desc)  →  idPeriodo (desc)
 ```
 
-`JUE2026` gana porque arranca el 2026-07-06 contra el 2026-01-12 de `ENE2026`. El
-orden es determinista: dos ejecuciones devuelven siempre lo mismo.
+de modo que, dentro de un nivel, el período más reciente aparece primero y el
+resultado es determinista entre ejecuciones.
 
-**2. "Más reciente" no es lo mismo que "vigente".** Hoy solo el nivel 35 está en curso;
-el resto tiene su último período cerrado, el del nivel 37 por menos de una semana. Por
-eso la consulta devuelve la columna `vigencia`, y la interfaz **debe** mostrarla: un
-docente de TIPO "E" que abra `JUE2026` tiene que ver que ese período ya terminó, no
-suponer que está pasando lista sobre el período en curso.
+**2. "Vigente" no es lo mismo que "visible".** Antes de esta regla, un docente de
+TIPO "E" que abriera `JUE2026` tenía que ver que ese período ya terminó (columna
+`vigencia`), no suponer que pasaba lista sobre el período en curso — eso sigue igual.
+Lo que cambió es que ya no hace falta elegir *entre* `JUE2026` y un eventual período
+futuro del mismo nivel: ambos se listan, cada uno con su propia `vigencia`.
 
-`FUTURO` cubre el caso de un período ya cargado que todavía no arranca.
+**3. El corte de 6 meses es una ventana de gracia para el selector, no una regla de
+negocio del distributivo.** No borra ni oculta datos — un período cerrado hace más de
+6 meses simplemente no aparece en `/api/periodos/por-nivel`; sigue existiendo y sigue
+siendo consultable por otras rutas (reportes del inspector, por ejemplo) que no pasan
+por este filtro.
 
 ### Implementación
 
 El backend expone esto en `GET /api/periodos/por-nivel`. En `Application` conviene
-resolverlo en dos pasos en vez de traducir ese `HAVING` a LINQ:
+resolverlo en dos pasos en vez de traducir el `HAVING` de arriba a LINQ:
 
 1. Una consulta que agrupe por `(idNivel, idPeriodo)` con sus `MIN`/`MAX` y conteos.
-2. El "más reciente por nivel" se elige en memoria — son 6 niveles, no hay costo.
+2. La ventana de visibilidad (VIGENTE, FUTURO, o CERRADO ≤ 6 meses) se aplica en
+   memoria — son ~6 niveles con unos pocos períodos cada uno, no hay costo.
 
-Queda más legible y testeable. El SQL de arriba se conserva en
-`database/queries/verificar-esquema-cplec.sql` (consulta 14) para verificación directa
-contra la base.
+Queda más legible y testeable que el `HAVING` correlacionado original. El SQL de arriba
+se conserva en `database/queries/verificar-esquema-cplec.sql` (consulta 14) para
+verificación directa contra la base, aunque ya no refleja el filtro final de "un
+período por nivel" (ese `HAVING` quedó obsoleto con este cambio).
 
 ---
 
@@ -353,3 +388,21 @@ AND COALESCE(m.valida,   1) = 1     -- matrícula anulada fuera
 
 En los pasos 2 a 7 se revalida que `idAsignacion` pertenezca al distributivo del
 docente del token. Ver [`03-autenticacion-rbac.md`](03-autenticacion-rbac.md) sección 5.
+
+---
+
+## Vigencia y anclaje de la asistencia (2026-08-08)
+
+**Qué es "vigente".** Una asignación está vigente si su ventana
+`fecha_inicial .. fecha_fin` cubre la fecha de referencia, con 15 días de gracia después
+de `fecha_fin`; una ventana `NULL` cuenta como vigente (son 737 asignaciones activas de
+carrera 6). **`periodos.activo` no sirve**: está en 1 en casi todos los períodos,
+incluidos los de 2022. La regla vive en `MisParalelosService.ResolverAsync` y la
+reutilizan `GET /api/mis-paralelos` y `GET /api/mi-horario`.
+
+**Qué ancla la asistencia.** Una sesión cuelga de un bloque de `horario_detalle`, no de
+una fecha. `idFecha` y `numeroBloque` se derivan del `idHorarioInicio`; el cliente no los
+elige. Sin celdas de horario activas para la asignación, `POST .../sesiones` responde
+`422 SIN_HORARIO`. El registro retroactivo sigue permitido sin tope, marcado con
+`esTardia` y `diasRetraso` congelados en el primer guardado.
+

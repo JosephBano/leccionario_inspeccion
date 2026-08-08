@@ -57,7 +57,12 @@ Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) sección 5.
   obligatorias**: con 3 el join devuelve el triple de alumnos (otras jornadas).
 - En la carrera 6, `cursos.nivel` es el **tipo de licencia** (TIPO "C"/"D"/"E") y
   `secciones.seccion` es la **jornada** (matutina/nocturna/…). No son "niveles".
-- Las sesiones son **por día, no por hora**. Sin FK a `horas_clases`.
+- Las sesiones tienen **grano día pero están ancladas a un bloque de horario**
+  (`cplec_sesiones.idHorarioInicio` → `horario_detalle`). Desde 2026-08-08, sin horario
+  planificado no se puede registrar asistencia: `422 SIN_HORARIO`. Las sesiones con
+  `idHorarioInicio` NULL son históricas.
+- "Periodo vigente" se decide por la ventana `fecha_inicial..fecha_fin` de la asignación
+  (+15 días de gracia; `NULL` = vigente), nunca por `periodos.activo`.
 - El rango válido de una sesión sale de `asignaciones_profesores.fecha_inicial ..
   fecha_fin`. **Medido 2026-08-07: mín 12 días, máx 408, promedio 41.** No son "módulos
   cortos de 2 a 6 semanas": eso es la mediana. Los paralelos vigentes hoy corren 380-408
@@ -88,8 +93,8 @@ Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) sección 5.
 
 ```bash
 ./scripts/setup-hooks.sh                    # una vez por clon
-cd src    && dotnet test                    # 239 tests backend
-cd client && npm test && npm run lint && npm run build   # 24 tests frontend + lint + build
+cd src    && dotnet test                    # 264 tests backend
+cd client && npm test && npm run lint && npm run build   # 41 tests frontend + lint + build
 ```
 
 ## Frontend (Angular 21)
@@ -119,10 +124,13 @@ estado `activo` se valida **después** de la credencial, y por qué el mensaje d
 - Backend scaffoldeado en `src/`. M3 completo: auth + DistributivoGuard +
   endpoints de distributivo + sesiones + asistencia + perfil.
 - **Migraciones 001–005 aplicadas en desarrollo** (2026-08-07).
-- **M4b Backend de Horarios del inspector completado** (commit `abfc863`). **239 tests backend verdes**.
+- **M4b Backend de Horarios del inspector completado** (commit `abfc863`). **247 tests backend verdes**.
   Grid semanal, catálogo franjas Z, solapamiento, operaciones por rango con topes, anclaje de sesión a horario, tardanza congelada y reportes de inspección.
-- Frontend scaffoldeado en `client/` (Angular 21). Login funcional con refresh;
-  mis paralelos; pasar lista ligada a M3. **24 tests frontend verdes**.
+  Auditoría posterior encontró y cerró un hueco: `GET /api/horarios/grid` no verificaba que el
+  docente fuera dueño del paralelo pedido. Ahora pasa por
+  `DistributivoGuard.EnsureDocenteTieneParaleloAsync` (misma familia que `EnsureDocenteTieneAsignacionAsync`,
+  pero contra la 5-tupla en vez de `idAsignacion`).
+- **M4c completado**: `GET /api/mi-horario`, retiro del modo transición (`SIN_HORARIO`), agenda por lote sin N+1, página `mi-horario` del docente y `pasar-lista` anclada al bloque. **264 tests backend verdes, 41 tests frontend verdes**.
 - Producción: sin aplicar.
 
 Para correr o revertir un `.sql`: `database/migrations/README.md`.
