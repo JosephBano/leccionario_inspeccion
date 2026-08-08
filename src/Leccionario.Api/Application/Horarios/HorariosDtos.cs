@@ -47,3 +47,30 @@ public sealed record FranjaDto(
 
 public sealed record CrearFranjaDto(string HoraInicio, string HoraFin, int? NumeroHora);
 
+/// <summary>Un paralelo es la 5-tupla completa. Con menos, el join miente.</summary>
+public sealed record ParaleloClaveDto(
+    string IdPeriodo, int IdNivel, int IdSeccion, int IdModalidad, string Paralelo);
+
+/// <param name="IdFecha">NULL si `fechas_horarios` no tiene esa fecha.</param>
+public sealed record DiaGridDto(
+    string Dia, DateOnly Fecha, int? IdFecha, bool Habilitado, string? Motivo);
+
+public sealed record CeldaGridDto(
+    int IdHorario, int IdAsignacion, int Idhora, string Dia,
+    string? NombreDocente, string? TipoBloque);
+
+public sealed record GridDto(
+    IReadOnlyList<FranjaDto> Franjas,
+    IReadOnlyList<DiaGridDto> Dias,
+    IReadOnlyList<CeldaGridDto> Celdas);
+
+/// <param name="ConfirmarAdvertencias">
+/// El inspector vio el choque contra el horario de otra carrera y decidió guardar igual.
+/// </param>
+public sealed record CrearCeldaDto(
+    int IdAsignacion, int IdFecha, int Idhora, string? TipoBloque,
+    bool ConfirmarAdvertencias = false);
+
+public sealed record CeldaCreadaDto(int IdHorario, IReadOnlyList<ConflictoDto> Advertencias);
+
+
