@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leccionario.Api.Domain.Entities;
 using Leccionario.Api.Infrastructure.DbContexts;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,5 +47,40 @@ public sealed class DbContextSmokeTests
 
         dbsets.Should().BeSubsetOf(entidadesModelo,
             "todo DbSet debe corresponder a una entidad registrada en el modelo");
+    }
+
+    [TestMethod]
+    public void DbContext_ExponeLasTablasDeHorarios()
+    {
+        var opciones = new DbContextOptionsBuilder<sigafi_esContext>()
+            .UseInMemoryDatabase(nameof(DbContext_ExponeLasTablasDeHorarios))
+            .Options;
+        using var db = new sigafi_esContext(opciones);
+
+        db.horario_detalle.Should().NotBeNull();
+        db.horas_clases.Should().NotBeNull();
+        db.espacios.Should().NotBeNull();
+    }
+
+    [TestMethod]
+    public void HorasClases_UsaLosNombresDeColumnaRealesEnSnakeCase()
+    {
+        // hora_inicio / hora_fin / numero_hora, NO horaInicio / horaFin / numeroHora.
+        // gacad usa camelCase en sus DTOs; la columna real es snake_case.
+        var props = typeof(horas_clases).GetProperties().Select(p => p.Name).ToArray();
+
+        props.Should().Contain(new[] { "hora_inicio", "hora_fin", "numero_hora", "tipo" });
+        props.Should().NotContain("horaInicio");
+    }
+
+    [TestMethod]
+    public void HorarioDetalle_TieneLasColumnasQueEscribimos()
+    {
+        var props = typeof(horario_detalle).GetProperties().Select(p => p.Name).ToArray();
+
+        props.Should().Contain(new[]
+        {
+            "idHorario", "idAsignacion", "idFecha", "idhora", "idEspacio", "tipoBloque", "activo"
+        });
     }
 }

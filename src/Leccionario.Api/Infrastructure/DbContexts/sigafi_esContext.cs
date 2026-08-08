@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Leccionario.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -28,9 +28,15 @@ public partial class sigafi_esContext : DbContext
 
     public virtual DbSet<cursos> cursos { get; set; }
 
+    public virtual DbSet<espacios> espacios { get; set; }
+
     public virtual DbSet<fechas_horarios> fechas_horarios { get; set; }
 
     public virtual DbSet<gest_audit_registros> gest_audit_registros { get; set; }
+
+    public virtual DbSet<horario_detalle> horario_detalle { get; set; }
+
+    public virtual DbSet<horas_clases> horas_clases { get; set; }
 
     public virtual DbSet<matriculas> matriculas { get; set; }
 
@@ -398,6 +404,15 @@ public partial class sigafi_esContext : DbContext
                 .HasConstraintName("cursos_ibfk_1");
         });
 
+        modelBuilder.Entity<espacios>(entity =>
+        {
+            entity.HasKey(e => e.idEspacio).HasName("PRIMARY");
+
+            entity.Property(e => e.idEspacio).HasColumnType("int(11)");
+            entity.Property(e => e.activo).HasColumnType("tinyint(4)");
+            entity.Property(e => e.espacio).HasMaxLength(100);
+        });
+
         modelBuilder.Entity<fechas_horarios>(entity =>
         {
             entity.HasKey(e => e.idFecha).HasName("PRIMARY");
@@ -409,6 +424,44 @@ public partial class sigafi_esContext : DbContext
             entity.Property(e => e.finsemana)
                 .HasDefaultValueSql("'0'")
                 .HasColumnType("tinyint(4)");
+        });
+
+        modelBuilder.Entity<horario_detalle>(entity =>
+        {
+            entity.HasKey(e => e.idHorario).HasName("PRIMARY");
+
+            entity.HasIndex(e => new { e.idFecha, e.idhora, e.activo }, "ix_horario_detalle_fecha_hora_activo");
+
+            entity.Property(e => e.idHorario).HasColumnType("int(11)");
+            entity.Property(e => e.activo).HasColumnType("tinyint(4)");
+            entity.Property(e => e.claseReasignacion).HasColumnType("tinyint(4)");
+            entity.Property(e => e.esRecuperacionPedagocia).HasColumnType("tinyint(1)");
+            entity.Property(e => e.idAsignacion).HasColumnType("int(11)");
+            entity.Property(e => e.idEspacio).HasColumnType("int(11)");
+            entity.Property(e => e.idFecha).HasColumnType("int(11)");
+            entity.Property(e => e.idHorarioReasgincacion).HasColumnType("int(11)");
+            entity.Property(e => e.idhora).HasColumnType("int(11)");
+            entity.Property(e => e.observacion).HasMaxLength(255);
+            entity.Property(e => e.tipoBloque).HasMaxLength(50);
+
+            entity.HasOne(d => d.idEspacioNavigation).WithMany(p => p.horario_detalle)
+                .HasForeignKey(d => d.idEspacio)
+                .HasConstraintName("fk_horario_detalle_espacios1");
+        });
+
+        modelBuilder.Entity<horas_clases>(entity =>
+        {
+            entity.HasKey(e => e.idhora).HasName("PRIMARY");
+
+            entity.Property(e => e.idhora).HasColumnType("int(11)");
+            entity.Property(e => e.activo).HasColumnType("tinyint(4)");
+            entity.Property(e => e.hora_fin).HasMaxLength(8);
+            entity.Property(e => e.hora_inicio).HasMaxLength(8);
+            entity.Property(e => e.idCarrera).HasColumnType("int(11)");
+            entity.Property(e => e.idSeccion).HasColumnType("int(11)");
+            entity.Property(e => e.minutos).HasColumnType("int(11)");
+            entity.Property(e => e.numero_hora).HasColumnType("int(11)");
+            entity.Property(e => e.tipo).HasMaxLength(1);
         });
 
         modelBuilder.Entity<gest_audit_registros>(entity =>
