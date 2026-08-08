@@ -146,15 +146,36 @@ public sealed class MiHorarioServiceTests
     }
 
     [TestMethod]
-    public async Task Obtener_RangoMayorA16Semanas_Rechaza()
+    public async Task Obtener_RangoExacto16Semanas_Acepta_16SemanasMasUnDia_Rechaza()
     {
-        using var db = CrearContexto(nameof(Obtener_RangoMayorA16Semanas_Rechaza));
+        using var db = CrearContexto(nameof(Obtener_RangoExacto16Semanas_Acepta_16SemanasMasUnDia_Rechaza));
         await SembrarAsync(db);
 
-        var acto = async () => await Crear(db).ObtenerAsync(Duenio, Lunes, Lunes.AddDays(16 * 7 + 1));
+        // 16 semanas exactas (112 días inclusivos, p.ej. Lunes a Domingo 16 semanas después = Lunes + 111 días) -> OK
+        var ok = await Crear(db).ObtenerAsync(Duenio, Lunes, Lunes.AddDays(16 * 7 - 1));
+        ok.Should().NotBeNull();
+
+        // 113 días inclusivos (16 semanas + 1 día, p.ej. Lunes + 112 días) -> Rechaza
+        var acto = async () => await Crear(db).ObtenerAsync(Duenio, Lunes, Lunes.AddDays(16 * 7));
 
         (await acto.Should().ThrowAsync<AppException>())
             .Which.Codigo.Should().Be("RANGO_EXCEDE_TOPE");
+    }
+
+    [TestMethod]
+    public async Task Obtener_AsignacionIniciaAMitadDeSemana_IncluyeBloquesDeEsaSemana()
+    {
+        using var db = CrearContexto(nameof(Obtener_AsignacionIniciaAMitadDeSemana_IncluyeBloquesDeEsaSemana));
+        // Asignación arranca el miércoles 2026-08-05. Hoy es 2026-08-05 ( Reloj ).
+        // Consultamos la semana desde el lunes 2026-08-03.
+        await SembrarAsync(db);
+        db.asignaciones_profesores.First(ap => ap.idAsignacion == 100).fecha_inicial = new DateOnly(2026, 8, 5);
+        await db.SaveChangesAsync();
+
+        var r = await Crear(db).ObtenerAsync(Duenio, Lunes, Domingo);
+
+        // No debe quedar excluida por el hecho de que inicio (2026-08-03) fue anterior a fecha_inicial (2026-08-05).
+        r.Should().HaveCount(2);
     }
 
     [TestMethod]

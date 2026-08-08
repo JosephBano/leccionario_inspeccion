@@ -56,7 +56,7 @@ public sealed class MiHorarioService : IMiHorarioService
 
         // Vigencia: ventana fecha_inicial..fecha_fin + 15 días de gracia. No se
         // usa periodos.activo, que está en 1 hasta en periodos de 2022.
-        var paralelos = await _misParalelos.ResolverAsync(idProfesor, null, inicio, ct);
+        var paralelos = await _misParalelos.ResolverAsync(idProfesor, idPeriodo: null, fechaReferencia: null, ct);
         if (paralelos.Count == 0)
             return Array.Empty<BloqueMiHorarioDto>();
 
@@ -94,7 +94,7 @@ public sealed class MiHorarioService : IMiHorarioService
         if (desde > hasta)
             throw new ValidacionException("La fecha inicial no puede ser posterior a la final.");
 
-        if (hasta.Value.DayNumber - desde.Value.DayNumber > MaximoSemanas * 7)
+        if ((hasta.Value.DayNumber - desde.Value.DayNumber + 1) > MaximoSemanas * 7)
             throw new ConflictoLoteException("RANGO_EXCEDE_TOPE",
                 $"El rango no puede superar {MaximoSemanas} semanas.");
 
