@@ -48,7 +48,7 @@ public sealed class MisParalelosService : IMisParalelosService
         if (string.IsNullOrWhiteSpace(idProfesor))
             throw new UnauthorizedAccessException("No se puede determinar el docente autenticado.");
 
-        var referencia = fechaReferencia ?? DateOnly.FromDateTime(_reloj.GetUtcNow().UtcDateTime);
+        var referencia = fechaReferencia ?? DateOnly.FromDateTime(_reloj.GetUtcNow().LocalDateTime);
 
         // Paso 1: traer las asignaciones activas del docente en la carrera 6.
         // El filtro de ventana fecha_inicial..fecha_fin (+ DiasGracia) se aplica

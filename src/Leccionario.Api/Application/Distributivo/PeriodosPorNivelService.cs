@@ -4,24 +4,46 @@ using Microsoft.EntityFrameworkCore;
 namespace Leccionario.Api.Application.Distributivo;
 
 /// <summary>
-/// Resuelve el período más reciente por cada nivel (tipo de licencia) de la
-/// carrera 6. Ver <c>docs/04-contrato-api.md</c> sección Docente y <c>docs/10</c> sección 5.
+/// Resuelve, por cada nivel (tipo de licencia) de la carrera 6, los períodos
+/// que un docente o inspector debería poder elegir hoy. Ver
+/// <c>docs/04-contrato-api.md</c> sección Docente y <c>docs/10</c> sección 5.
 /// </summary>
 /// <remarks>
 /// Implementación en dos pasos (per docs/10):
 /// <list type="number">
 /// <item>Una consulta agrupa por <c>(idNivel, idPeriodo)</c> con
 /// <c>MIN</c>/<c>MAX</c> de fechas y conteos.</item>
-/// <item>El "más reciente por nivel" se elige en memoria — son ~6 niveles.</item>
+/// <item>La ventana de visibilidad (<see cref="EsVisible"/>) se aplica en
+/// memoria — son ~6 niveles, unos pocos períodos cada uno.</item>
 /// </list>
-/// El <c>HAVING</c> correlacionado del SQL original es ilegible en LINQ; el
-/// orden de desempate <c>fecha_fin → fecha_inicial → idPeriodo</c> se preserva.
+/// <para>
+/// <b>Por qué "por nivel" y no "el período del sistema":</b> los niveles de
+/// la carrera 6 corren en calendarios independientes (TIPO "C" puede estar a
+/// mitad de período mientras TIPO "E" acaba de cerrar). No existe un período
+/// activo único — agrupar por <c>idNivel</c> es la única forma de identificar
+/// correctamente cuál período le corresponde a cada tipo de licencia.
+/// </para>
+/// <para>
+/// <b>Qué cuenta como "vigencia" aquí:</b> a diferencia de la primera versión
+/// (un solo período, el más reciente, por nivel), ahora se devuelve
+/// <i>cada</i> período de un nivel que sea relevante para elegir hoy:
+/// <c>VIGENTE</c> (hoy cae dentro de <c>fecha_inicial..fecha_fin</c>),
+/// <c>FUTURO</c> (ya cargado en el distributivo pero aún no arranca — debe
+/// verse para que el docente/inspector lo anticipe), o <c>CERRADO</c> pero
+/// solo si terminó hace <see cref="MesesVisibilidadCierre"/> meses o menos
+/// (un período cerrado hace más de eso ya no es útil para el selector y solo
+/// agrega ruido). Períodos sin <c>fecha_inicial</c>/<c>fecha_fin</c> (rango
+/// NULL, ver CLAUDE.md) se tratan como <c>VIGENTE</c>: sin fechas no hay
+/// forma de excluirlos con seguridad, así que se muestran siempre.
+/// </para>
 /// </remarks>
 public interface IPeriodosPorNivelService
 {
     /// <summary>
-    /// Devuelve una fila por nivel (tipo de licencia) de la carrera 6, con el
-    /// período más reciente de ese nivel. Si <paramref name="idProfesor"/> no
+    /// Devuelve, por cada nivel (tipo de licencia) de la carrera 6, los
+    /// períodos vigentes, futuros o cerrados recientemente (ver
+    /// <see cref="PeriodosPorNivelService.MesesVisibilidadCierre"/>). Puede
+    /// haber más de una fila por nivel. Si <paramref name="idProfesor"/> no
     /// es nulo, limita a los niveles en los que el docente tiene distributivo.
     /// </summary>
     Task<IReadOnlyList<PeriodoPorNivelDto>> ResolverAsync(
@@ -33,6 +55,13 @@ public interface IPeriodosPorNivelService
 public sealed class PeriodosPorNivelService : IPeriodosPorNivelService
 {
     private const int CarreraConduccion = 6;
+
+    /// <summary>
+    /// Un período CERRADO sigue siendo visible en el selector hasta este
+    /// número de meses después de su <c>fecha_fin</c>. Más allá, se oculta.
+    /// </summary>
+    public const int MesesVisibilidadCierre = 6;
+
     private readonly sigafi_esContext _db;
     private readonly TimeProvider _reloj;
 
@@ -80,32 +109,34 @@ public sealed class PeriodosPorNivelService : IPeriodosPorNivelService
         if (grupos.Count == 0)
             return Array.Empty<PeriodoPorNivelDto>();
 
-        // Paso 2: por nivel, elegir el "más reciente" con desempate determinista.
-        var referencia = fechaReferencia ?? DateOnly.FromDateTime(_reloj.GetUtcNow().UtcDateTime);
+        // Paso 2: por nivel, quedarse con los períodos visibles hoy (vigentes,
+        // futuros, o cerrados dentro de la ventana de gracia). A diferencia de
+        // la primera versión, esto puede dejar varios períodos por nivel — p.ej.
+        // uno VIGENTE y otro ya FUTURO cargado en el distributivo.
+        var referencia = fechaReferencia ?? DateOnly.FromDateTime(_reloj.GetUtcNow().LocalDateTime);
+        var limiteCierre = referencia.AddMonths(-MesesVisibilidadCierre);
 
-        var masRecientes = grupos
-            .GroupBy(g => g.idNivel)
-            .Select(nivel => nivel
-                .OrderByDescending(g => g.FechaFin ?? DateOnly.MinValue)
-                .ThenByDescending(g => g.FechaInicial ?? DateOnly.MinValue)
-                .ThenByDescending(g => g.idPeriodo)
-                .First())
+        var visibles = grupos
+            .Select(g => new { Grupo = g, Vigencia = CalcularVigencia(g.FechaInicial, g.FechaFin, referencia) })
+            .Where(x => EsVisible(x.Vigencia, x.Grupo.FechaFin, limiteCierre))
             .ToList();
 
-        return masRecientes
-            .OrderByDescending(g => g.FechaFin ?? DateOnly.MinValue)
-            .ThenBy(g => g.idNivel)
-            .Select(g => new PeriodoPorNivelDto
+        return visibles
+            .OrderBy(x => x.Grupo.idNivel)
+            .ThenByDescending(x => x.Grupo.FechaFin ?? DateOnly.MinValue)
+            .ThenByDescending(x => x.Grupo.FechaInicial ?? DateOnly.MinValue)
+            .ThenByDescending(x => x.Grupo.idPeriodo)
+            .Select(x => new PeriodoPorNivelDto
             {
-                IdNivel = g.idNivel,
-                TipoLicencia = g.Nivel ?? string.Empty,
-                IdPeriodo = g.idPeriodo,
-                Detalle = g.Detalle,
-                FechaInicial = g.FechaInicial,
-                FechaFin = g.FechaFin,
-                Vigencia = CalcularVigencia(g.FechaInicial, g.FechaFin, referencia),
-                Asignaciones = g.Asignaciones,
-                Docentes = g.Docentes
+                IdNivel = x.Grupo.idNivel,
+                TipoLicencia = x.Grupo.Nivel ?? string.Empty,
+                IdPeriodo = x.Grupo.idPeriodo,
+                Detalle = x.Grupo.Detalle,
+                FechaInicial = x.Grupo.FechaInicial,
+                FechaFin = x.Grupo.FechaFin,
+                Vigencia = x.Vigencia,
+                Asignaciones = x.Grupo.Asignaciones,
+                Docentes = x.Grupo.Docentes
             })
             .ToList();
     }
@@ -116,4 +147,7 @@ public sealed class PeriodosPorNivelService : IPeriodosPorNivelService
         if (fechaFin.HasValue && referencia > fechaFin.Value) return "CERRADO";
         return "VIGENTE";
     }
+
+    private static bool EsVisible(string vigencia, DateOnly? fechaFin, DateOnly limiteCierre) =>
+        vigencia != "CERRADO" || (fechaFin.HasValue && fechaFin.Value >= limiteCierre);
 }
