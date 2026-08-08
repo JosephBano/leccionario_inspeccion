@@ -32,6 +32,36 @@ public sealed class AgendaServiceTests
     private static IAgendaService CrearAgenda(sigafi_esContext db, TimeProvider reloj) =>
         new AgendaService(db, reloj);
 
+    private static IAgendaService CrearServicio(sigafi_esContext db) =>
+        new AgendaService(db, new RelojFijo(El(9)));
+
+    /// <summary>
+    /// Dos asignaciones de carrera 6: la 100 el lunes 2026-08-03 en ambas franjas
+    /// (07:00-08:00 y 08:00-09:00), la 200 el martes 2026-08-04 solo en la primera.
+    /// </summary>
+    private static async Task SembrarDosAsignacionesAsync(sigafi_esContext db)
+    {
+        db.cursos.Add(new cursos { idNivel = 35, idCarrera = 6, Nivel = "TIPO \"C\"" });
+        db.profesores.Add(new profesores { idProfesor = Duenio, apellidos = "PEREZ", nombres = "JUAN", tipoSangre = "O+" });
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .ConId(100).DelProfesor(Duenio).ConNivel(35)
+            .ConRango(new DateOnly(2026, 7, 1), new DateOnly(2026, 12, 31)).Build());
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .ConId(200).DelProfesor(Duenio).ConNivel(35)
+            .ConRango(new DateOnly(2026, 7, 1), new DateOnly(2026, 12, 31)).Build());
+        db.fechas_horarios.AddRange(
+            new fechas_horarios { idFecha = 500, fecha = new DateOnly(2026, 8, 3), dia = "Lunes" },
+            new fechas_horarios { idFecha = 501, fecha = new DateOnly(2026, 8, 4), dia = "Martes" });
+        db.horas_clases.AddRange(
+            new FranjaBuilder().ConId(901).DeTipo("Z").DeRango("07:00", "08:00").Build(),
+            new FranjaBuilder().ConId(902).DeTipo("Z").DeRango("08:00", "09:00").Build());
+        db.horario_detalle.AddRange(
+            new HorarioDetalleBuilder().ConId(1).DeAsignacion(100).EnFecha(500).EnFranja(901).Build(),
+            new HorarioDetalleBuilder().ConId(2).DeAsignacion(100).EnFecha(500).EnFranja(902).Build(),
+            new HorarioDetalleBuilder().ConId(3).DeAsignacion(200).EnFecha(501).EnFranja(901).Build());
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>Igual que en SesionServiceTests: horario del lunes con 2 franjas contiguas.</summary>
     private static async Task SembrarHorarioAsync(sigafi_esContext db)
     {
@@ -199,5 +229,35 @@ public sealed class AgendaServiceTests
         agenda[1].IdHorarioInicio.Should().Be(3);
         agenda.Should().OnlyContain(b => b.Estado == EstadoBloque.Pendiente);
         agenda[0].DiasRetraso.Should().Be(2);
+    }
+
+    [TestMethod]
+    public async Task ObtenerAgenda_Batch_DevuelveLoMismoQueLlamadasIndividuales()
+    {
+        using var db = CrearContexto(nameof(ObtenerAgenda_Batch_DevuelveLoMismoQueLlamadasIndividuales));
+        await SembrarDosAsignacionesAsync(db);
+        var svc = CrearServicio(db);
+        var desde = new DateOnly(2026, 8, 3);
+        var hasta = new DateOnly(2026, 8, 9);
+
+        var a = await svc.ObtenerAgendaAsync(100, desde, hasta);
+        var b = await svc.ObtenerAgendaAsync(200, desde, hasta);
+        var batch = await svc.ObtenerAgendaAsync(new[] { 100, 200 }, desde, hasta);
+
+        batch.Should().HaveCount(a.Count + b.Count);
+        batch.Where(x => x.IdAsignacion == 100).Should().BeEquivalentTo(a);
+        batch.Where(x => x.IdAsignacion == 200).Should().BeEquivalentTo(b);
+    }
+
+    [TestMethod]
+    public async Task ObtenerAgenda_Batch_ConListaVacia_DevuelveVacio()
+    {
+        using var db = CrearContexto(nameof(ObtenerAgenda_Batch_ConListaVacia_DevuelveVacio));
+        await SembrarDosAsignacionesAsync(db);
+
+        var r = await CrearServicio(db).ObtenerAgendaAsync(
+            Array.Empty<int>(), new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 9));
+
+        r.Should().BeEmpty();
     }
 }

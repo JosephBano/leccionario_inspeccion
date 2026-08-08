@@ -7,7 +7,7 @@ namespace Leccionario.Api.Application.Asistencia;
 
 public enum EstadoBloque { Pendiente, Borrador, Cerrada, Futura }
 
-public sealed record BloqueAgendaDto(DateOnly Fecha, string Dia, int IdHorarioInicio,
+public sealed record BloqueAgendaDto(int IdAsignacion, DateOnly Fecha, string Dia, int IdHorarioInicio,
     int NumeroBloque, string HoraInicio, string HoraFin, int FranjasPlanificadas,
     int MinutosPlanificados, EstadoBloque Estado, int? IdSesion, int DiasRetraso);
 
@@ -20,6 +20,12 @@ public sealed record DiaSinRegistrarDto(int IdAsignacion, DateOnly Fecha,
 public interface IAgendaService
 {
     Task<IReadOnlyList<BloqueAgendaDto>> ObtenerAgendaAsync(int idAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default);
+
+    /// <summary>
+    /// Igual que la sobrecarga de un solo idAsignacion, pero resuelve todas las
+    /// asignaciones en una sola consulta. Cada bloque trae su <c>IdAsignacion</c>.
+    /// </summary>
+    Task<IReadOnlyList<BloqueAgendaDto>> ObtenerAgendaAsync(IReadOnlyCollection<int> idsAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default);
     Task<IReadOnlyList<SesionTardiaDto>> SesionesTardiasAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default);
     Task<IReadOnlyList<DiaSinRegistrarDto>> DiasSinRegistrarAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default);
 }
@@ -35,35 +41,45 @@ public sealed class AgendaService : IAgendaService
         _reloj = reloj ?? TimeProvider.System;
     }
 
+    public Task<IReadOnlyList<BloqueAgendaDto>> ObtenerAgendaAsync(
+        int idAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default) =>
+        ObtenerAgendaAsync(new[] { idAsignacion }, desde, hasta, ct);
+
     public async Task<IReadOnlyList<BloqueAgendaDto>> ObtenerAgendaAsync(
-        int idAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default)
+        IReadOnlyCollection<int> idsAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default)
     {
+        if (idsAsignacion.Count == 0)
+            return Array.Empty<BloqueAgendaDto>();
+
+        var ids = idsAsignacion.Distinct().ToList();
         var hoy = DateOnly.FromDateTime(_reloj.GetUtcNow().LocalDateTime);
 
-        // 1. Celdas activas de la asignación en el rango, con su franja y su fecha.
+        // 1. Celdas activas de las asignaciones en el rango, con su franja y su fecha.
         var filas = await (
             from hd in _db.horario_detalle.AsNoTracking()
             join hc in _db.horas_clases.AsNoTracking() on hd.idhora equals hc.idhora
             join fh in _db.fechas_horarios.AsNoTracking() on hd.idFecha equals fh.idFecha
-            where hd.idAsignacion == idAsignacion
+            where ids.Contains(hd.idAsignacion)
                   && hd.activo == 1
                   && fh.fecha != null && fh.fecha >= desde && fh.fecha <= hasta
             select new
             {
-                hd.idHorario, hd.idhora, hd.idFecha,
+                hd.idAsignacion, hd.idHorario, hd.idhora, hd.idFecha,
                 Fecha = fh.fecha!.Value, Dia = fh.dia,
                 hc.hora_inicio, hc.hora_fin, hc.minutos
             }).ToListAsync(ct);
 
-        // 2. Sesiones existentes, indexadas por (idFecha, numeroBloque).
+        // 2. Sesiones existentes, indexadas por (idAsignacion, idFecha, numeroBloque).
         var sesiones = await _db.cplec_sesiones.AsNoTracking()
-            .Where(s => s.idAsignacion == idAsignacion && s.activo == true)
-            .Select(s => new { s.idSesion, s.idFecha, s.numeroBloque, s.estado })
+            .Where(s => ids.Contains(s.idAsignacion) && s.activo == true)
+            .Select(s => new { s.idSesion, s.idAsignacion, s.idFecha, s.numeroBloque, s.estado })
             .ToListAsync(ct);
 
-        // 3. Un grupo por fecha; dentro, agrupar en bloques contiguos.
+        // 3. Un grupo por (asignación, fecha); dentro, agrupar en bloques contiguos.
         var resultado = new List<BloqueAgendaDto>();
-        foreach (var grupo in filas.GroupBy(f => new { f.idFecha, f.Fecha, f.Dia }).OrderBy(g => g.Key.Fecha))
+        foreach (var grupo in filas
+            .GroupBy(f => new { f.idAsignacion, f.idFecha, f.Fecha, f.Dia })
+            .OrderBy(g => g.Key.Fecha).ThenBy(g => g.Key.idAsignacion))
         {
             var franjas = grupo
                 .Select(f => TimeOnly.TryParse(f.hora_inicio, out var i)
@@ -76,7 +92,9 @@ public sealed class AgendaService : IAgendaService
             foreach (var b in BloqueHorarioCalculator.Agrupar(franjas))
             {
                 var s = sesiones.FirstOrDefault(x =>
-                    x.idFecha == grupo.Key.idFecha && x.numeroBloque == b.NumeroBloque);
+                    x.idAsignacion == grupo.Key.idAsignacion
+                    && x.idFecha == grupo.Key.idFecha
+                    && x.numeroBloque == b.NumeroBloque);
 
                 var estado = grupo.Key.Fecha > hoy ? EstadoBloque.Futura
                     : s is null                    ? EstadoBloque.Pendiente
@@ -84,6 +102,7 @@ public sealed class AgendaService : IAgendaService
                                                    : EstadoBloque.Borrador;
 
                 resultado.Add(new BloqueAgendaDto(
+                    grupo.Key.idAsignacion,
                     grupo.Key.Fecha, grupo.Key.Dia ?? string.Empty,
                     b.IdHorarioInicio, b.NumeroBloque,
                     b.Inicio.ToString("HH\\:mm"), b.Fin.ToString("HH\\:mm"),
@@ -135,16 +154,18 @@ public sealed class AgendaService : IAgendaService
             .Distinct()
             .ToListAsync(ct);
 
-        var salida = new List<DiaSinRegistrarDto>();
-        foreach (var a in asignaciones)
-        {
-            var agenda = await ObtenerAgendaAsync(a.idAsignacion, desde, hasta, ct);
-            salida.AddRange(agenda
-                .Where(b => b.Estado == EstadoBloque.Pendiente)
-                .Select(b => new DiaSinRegistrarDto(
-                    a.idAsignacion, b.Fecha, a.Docente, b.NumeroBloque, b.DiasRetraso)));
-        }
+        var docentePorAsignacion = asignaciones
+            .GroupBy(a => a.idAsignacion)
+            .ToDictionary(g => g.Key, g => g.First().Docente);
 
-        return salida.OrderByDescending(d => d.DiasVencido).ThenBy(d => d.Fecha).ToList();
+        var agenda = await ObtenerAgendaAsync(docentePorAsignacion.Keys.ToList(), desde, hasta, ct);
+
+        return agenda
+            .Where(b => b.Estado == EstadoBloque.Pendiente)
+            .Select(b => new DiaSinRegistrarDto(
+                b.IdAsignacion, b.Fecha,
+                docentePorAsignacion.TryGetValue(b.IdAsignacion, out var d) ? d : null,
+                b.NumeroBloque, b.DiasRetraso))
+            .OrderByDescending(d => d.DiasVencido).ThenBy(d => d.Fecha).ToList();
     }
 }
