@@ -75,10 +75,21 @@ public sealed class MarcaSesionDto
 /// <summary>Cuerpo de <c>POST /api/paralelos/{idAsignacion}/sesiones</c>.</summary>
 public sealed class CrearSesionRequestDto
 {
+    /// <summary>Bloque de horario al que corresponde la clase. Obligatorio desde 2026-08-08.</summary>
     public int? IdHorarioInicio { get; init; }
+
+    /// <summary>
+    /// Obsoleto: la fecha se deriva de <see cref="IdHorarioInicio"/>. Se conserva
+    /// para no romper la deserialización de clientes viejos; el servicio la ignora.
+    /// </summary>
     public DateOnly Fecha { get; init; }
+
     public required string Tema { get; init; }
     public string? Observacion { get; init; }
+
+    /// <summary>
+    /// Obsoleto: el bloque se deriva de <see cref="IdHorarioInicio"/>. El servicio lo ignora.
+    /// </summary>
     public sbyte NumeroBloque { get; init; } = 1;
 }
 

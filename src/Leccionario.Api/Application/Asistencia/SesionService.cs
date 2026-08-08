@@ -91,30 +91,21 @@ public sealed class SesionService : ISesionService
             esInspector,
             ct);
 
-        // ---- Anclaje al horario (ADR-008 decisiones 7 y 9) -----------------------
+        // ---- Anclaje al horario (ADR-008 decisiones 7 y 9, modificada 2026-08-08) ----
+        // Sin horario planificado no hay asistencia: el modo transición se retiró.
         var (tieneHorario, bloques) = await ResolverBloquesAsync(idAsignacion, request.IdHorarioInicio, ct);
 
-        int idFecha;
-        int numeroBloque;
-        BloqueHorario? bloque = null;
+        if (!tieneHorario)
+            throw new SinHorarioException();
 
-        if (tieneHorario)
-        {
-            if (request.IdHorarioInicio is null)
-                throw new HorarioRequeridoException();
+        if (request.IdHorarioInicio is null)
+            throw new HorarioRequeridoException();
 
-            bloque = bloques.FirstOrDefault(b => b.IdHorarioInicio == request.IdHorarioInicio)
-                ?? throw new DistributivoAjenoException();
+        var bloque = bloques.FirstOrDefault(b => b.IdHorarioInicio == request.IdHorarioInicio)
+            ?? throw new DistributivoAjenoException();
 
-            idFecha = await IdFechaDelHorarioAsync(request.IdHorarioInicio.Value, ct);
-            numeroBloque = bloque.NumeroBloque;
-        }
-        else
-        {
-            // Modo transición: la asignación no tiene horario cargado.
-            idFecha = await ResolverIdFechaLibreAsync(request.Fecha, ct);
-            numeroBloque = request.NumeroBloque;
-        }
+        var idFecha = await IdFechaDelHorarioAsync(request.IdHorarioInicio.Value, ct);
+        var numeroBloque = bloque.NumeroBloque;
 
         var fechaClase = await FechaDeAsync(idFecha, ct);
         var hoy = DateOnly.FromDateTime(_reloj.GetUtcNow().LocalDateTime);
@@ -153,9 +144,9 @@ public sealed class SesionService : ISesionService
             idAsignacion = idAsignacion,
             idFecha = idFecha,
             numeroBloque = (sbyte)numeroBloque,
-            idHorarioInicio = bloque?.IdHorarioInicio,
-            franjasPlanificadas = (sbyte?)bloque?.FranjasPlanificadas,
-            minutosPlanificados = (short?)bloque?.MinutosPlanificados,
+            idHorarioInicio = bloque.IdHorarioInicio,
+            franjasPlanificadas = (sbyte?)bloque.FranjasPlanificadas,
+            minutosPlanificados = (short?)bloque.MinutosPlanificados,
             esTardia = diasRetraso > 0,
             diasRetraso = (short)diasRetraso,
             tema = request.Tema.Trim(),
@@ -377,19 +368,6 @@ public sealed class SesionService : ISesionService
             .Select(f => f!);
 
         return (true, BloqueHorarioCalculator.Agrupar(franjas));
-    }
-
-    private async Task<int> ResolverIdFechaLibreAsync(DateOnly fecha, CancellationToken ct)
-    {
-        var idFecha = await _db.fechas_horarios.AsNoTracking()
-            .Where(f => f.fecha == fecha)
-            .Select(f => (int?)f.idFecha)
-            .FirstOrDefaultAsync(ct);
-
-        if (idFecha is null)
-            throw new ValidacionException($"La fecha {fecha:yyyy-MM-dd} no existe en el calendario institucional.");
-
-        return idFecha.Value;
     }
 
     private Task<int> IdFechaDelHorarioAsync(int idHorario, CancellationToken ct) =>

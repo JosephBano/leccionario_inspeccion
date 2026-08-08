@@ -74,6 +74,15 @@ public sealed class SesionServiceTests
         db.SaveChanges();
     }
 
+    /// <summary>Agrega una franja Z y su celda a la asignación sembrada por <see cref="SembrarAsignacion"/>.</summary>
+    private static void SembrarCeldaSobreAsignacion(sigafi_esContext db, int idAsignacion = 100)
+    {
+        db.horas_clases.Add(new FranjaBuilder().ConId(910).DeTipo("Z").DeRango("07:00", "08:00").Build());
+        db.horario_detalle.Add(new HorarioDetalleBuilder().ConId(10)
+            .DeAsignacion(idAsignacion).EnFecha(100).EnFranja(910).Build());
+        db.SaveChanges();
+    }
+
     /// <summary>Asignación de carrera 6 con dos franjas contiguas el lunes 2026-08-03.</summary>
     private static async Task SembrarHorarioAsync(sigafi_esContext db)
     {
@@ -106,6 +115,7 @@ public sealed class SesionServiceTests
     {
         var (db, guard, nomina) = Preparar(nameof(Crear_FechaValida_CreaSesionConNomina));
         SembrarAsignacion(db);
+        SembrarCeldaSobreAsignacion(db);
         guard.Setup(g => g.EnsureDocenteTieneAsignacionAsync("0000000001", 100, false, It.IsAny<CancellationToken>()))
              .Returns(Task.CompletedTask);
         nomina.Setup(n => n.ResolverAsync(100, "0000000001", false, It.IsAny<CancellationToken>()))
@@ -117,7 +127,7 @@ public sealed class SesionServiceTests
 
         var sesion = await new SesionService(db, guard.Object, nomina.Object)
             .CrearAsync(100, "0000000001", false,
-                new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "Educación vial" }, default);
+                new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "Educación vial" }, default);
 
         sesion.Tema.Should().Be("Educación vial");
         sesion.Asistencias.Should().HaveCount(2);
@@ -128,10 +138,11 @@ public sealed class SesionServiceTests
     {
         var (db, guard, nomina) = Preparar(nameof(Crear_FechaFueraDeVentana_LanzaFueraDeVentana));
         SembrarAsignacion(db, desde: new DateOnly(2026, 9, 1), hasta: new DateOnly(2026, 12, 31));
+        SembrarCeldaSobreAsignacion(db);
 
         var act = async () => await new SesionService(db, guard.Object, nomina.Object)
             .CrearAsync(100, "0000000001", false,
-                new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "X" }, default);
+                new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "X" }, default);
 
         await act.Should().ThrowAsync<FueraDeVentanaException>();
     }
@@ -150,29 +161,17 @@ public sealed class SesionServiceTests
     }
 
     [TestMethod]
-    public async Task Crear_FechaNoExisteEnCalendario_LanzaValidacion()
-    {
-        var (db, guard, nomina) = Preparar(nameof(Crear_FechaNoExisteEnCalendario_LanzaValidacion));
-        SembrarAsignacion(db); // solo carga 2026-08-07
-
-        var act = async () => await new SesionService(db, guard.Object, nomina.Object)
-            .CrearAsync(100, "0000000001", false,
-                new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 6), Tema = "X" }, default);
-
-        await act.Should().ThrowAsync<ValidacionException>();
-    }
-
-    [TestMethod]
     public async Task Crear_TuplaExistente_IdempotenteDevuelveMismaSesion()
     {
         var (db, guard, nomina) = Preparar(nameof(Crear_TuplaExistente_IdempotenteDevuelveMismaSesion));
         SembrarAsignacion(db);
+        SembrarCeldaSobreAsignacion(db);
         guard.Setup(g => g.EnsureDocenteTieneAsignacionAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
              .Returns(Task.CompletedTask);
 
         var svc = new SesionService(db, guard.Object, nomina.Object);
-        var s1 = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "A" }, default);
-        var s2 = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "A" }, default);
+        var s1 = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "A" }, default);
+        var s2 = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "A" }, default);
 
         s1.IdSesion.Should().Be(s2.IdSesion);
     }
@@ -182,11 +181,12 @@ public sealed class SesionServiceTests
     {
         var (db, guard, nomina) = Preparar(nameof(Cerrar_DocenteDuenio_CambiaEstadoYCierra));
         SembrarAsignacion(db);
+        SembrarCeldaSobreAsignacion(db);
         guard.Setup(g => g.EnsureDocenteTieneAsignacionAsync("0000000001", 100, false, It.IsAny<CancellationToken>()))
              .Returns(Task.CompletedTask);
 
         var svc = new SesionService(db, guard.Object, nomina.Object);
-        var s = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "A" }, default);
+        var s = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "A" }, default);
 
         await svc.CerrarAsync(s.IdSesion, "0000000001", false, default);
 
@@ -199,11 +199,12 @@ public sealed class SesionServiceTests
     {
         var (db, guard, nomina) = Preparar(nameof(Reabrir_DocenteNoPermitido_Lanza403));
         SembrarAsignacion(db);
+        SembrarCeldaSobreAsignacion(db);
         guard.Setup(g => g.EnsureDocenteTieneAsignacionAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
              .Returns(Task.CompletedTask);
 
         var svc = new SesionService(db, guard.Object, nomina.Object);
-        var s = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "A" }, default);
+        var s = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "A" }, default);
         await svc.CerrarAsync(s.IdSesion, "0000000001", false, default);
 
         var act = async () => await svc.ReabrirAsync(s.IdSesion, "0000000001", false,
@@ -217,11 +218,12 @@ public sealed class SesionServiceTests
     {
         var (db, guard, nomina) = Preparar(nameof(Reabrir_Inspector_ConMotivo_CambiaEstado));
         SembrarAsignacion(db);
+        SembrarCeldaSobreAsignacion(db);
         guard.Setup(g => g.EnsureDocenteTieneAsignacionAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
              .Returns(Task.CompletedTask);
 
         var svc = new SesionService(db, guard.Object, nomina.Object);
-        var s = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 7), Tema = "A" }, default);
+        var s = await svc.CrearAsync(100, "0000000001", false, new CrearSesionRequestDto { IdHorarioInicio = 10, Tema = "A" }, default);
         await svc.CerrarAsync(s.IdSesion, "0000000001", false, default);
 
         await svc.ReabrirAsync(s.IdSesion, "0000000099", true, new ReabrirSesionRequestDto { Motivo = "Corrección" }, default);
@@ -327,17 +329,41 @@ public sealed class SesionServiceTests
     }
 
     [TestMethod]
-    public async Task Crear_SinHorarioEnLaAsignacion_AceptaFechaLibreYMarcaOrigenLibre()
+    public async Task Crear_SinHorarioEnLaAsignacion_LanzaSinHorario()
     {
-        using var db = CrearContexto(nameof(Crear_SinHorarioEnLaAsignacion_AceptaFechaLibreYMarcaOrigenLibre));
+        using var db = CrearContexto(nameof(Crear_SinHorarioEnLaAsignacion_LanzaSinHorario));
         await SembrarSinHorarioAsync(db);
 
-        var sesion = await CrearServicio(db, new RelojFijo(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero)))
+        var acto = async () => await CrearServicio(db,
+                new RelojFijo(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero)))
             .CrearAsync(Asig100, Duenio, false,
                 new CrearSesionRequestDto { Fecha = new DateOnly(2026, 8, 3), NumeroBloque = 1, Tema = "Libre" });
 
-        sesion.Origen.Should().Be("libre");
-        sesion.MinutosPlanificados.Should().BeNull();
+        (await acto.Should().ThrowAsync<AppException>())
+            .Which.Codigo.Should().Be("SIN_HORARIO");
+    }
+
+    [TestMethod]
+    public async Task Crear_ConBloqueValido_IgnoraLaFechaDelBody()
+    {
+        using var db = CrearContexto(nameof(Crear_ConBloqueValido_IgnoraLaFechaDelBody));
+        await SembrarHorarioAsync(db);
+
+        // El body miente: dice 2026-08-07, pero el bloque 1 está en fechas_horarios 500 = 2026-08-03.
+        var sesion = await CrearServicio(db,
+                new RelojFijo(new DateTimeOffset(2026, 8, 10, 12, 0, 0, TimeSpan.Zero)))
+            .CrearAsync(Asig100, Duenio, false,
+                new CrearSesionRequestDto
+                {
+                    IdHorarioInicio = 1,
+                    Fecha = new DateOnly(2026, 8, 7),
+                    NumeroBloque = 9,
+                    Tema = "Señalética"
+                });
+
+        sesion.Fecha.Should().Be(new DateOnly(2026, 8, 3));
+        sesion.NumeroBloque.Should().Be(1);
+        sesion.Origen.Should().Be("horario");
     }
 
     [TestMethod]
