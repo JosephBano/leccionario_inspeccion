@@ -44,7 +44,7 @@ public sealed class JwtTokenService : IJwtTokenService
 {
     private const string DefaultIssuer = "leccionario_conduccion";
     private const string DefaultAudience = "cplec";
-    private const int DefaultExpiryHours = 8;
+    private const int DefaultExpiryHours = 24;
 
     private readonly string _secret;
     private readonly string _issuer;

@@ -186,7 +186,7 @@ public sealed class AuthServiceTests
 
         respuesta.AccessToken.Should().NotBeNullOrEmpty();
         respuesta.RefreshToken.Should().Be("token-de-refresh-de-prueba");
-        respuesta.ExpiresIn.Should().Be(8 * 3600);
+        respuesta.ExpiresIn.Should().Be(24 * 3600);
         respuesta.Usuario.IdSigafi.Should().Be("1804567890");
         respuesta.Usuario.TipoUsuario.Should().Be("profesor");
         respuesta.Usuario.Roles.Should().ContainSingle().Which.Should().Be("cplec_docente");
@@ -278,7 +278,7 @@ public sealed class AuthServiceTests
 
         respuesta.AccessToken.Should().NotBeNullOrEmpty();
         respuesta.RefreshToken.Should().Be("nuevo-refresh-token");
-        respuesta.ExpiresIn.Should().Be(8 * 3600);
+        respuesta.ExpiresIn.Should().Be(24 * 3600);
     }
 
     [TestMethod]

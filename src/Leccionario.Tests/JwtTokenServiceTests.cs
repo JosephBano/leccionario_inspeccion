@@ -96,10 +96,10 @@ public sealed class JwtTokenServiceTests
     }
 
     [TestMethod]
-    public void ExpiryHours_SinParametro_DevuelveDefaultDe8()
+    public void ExpiryHours_SinParametro_DevuelveDefaultDe24()
     {
         var svc = new JwtTokenService(Secret);
-        svc.ExpiryHours.Should().Be(8);
+        svc.ExpiryHours.Should().Be(24);
     }
 
     [TestMethod]
