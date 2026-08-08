@@ -62,6 +62,38 @@ public sealed class AgendaServiceTests
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Dos asignaciones (100 y 200) que comparten el mismo día y el mismo bloque
+    /// (lunes 2026-08-03, franja 901, numeroBloque 1), con una sesión sembrada
+    /// SOLO para la 100. Sirve para probar que el emparejamiento sesión-bloque
+    /// no se cruza entre asignaciones cuando comparten (idFecha, numeroBloque).
+    /// Seed propio (no reutiliza SembrarDosAsignacionesAsync) porque ese sembrado
+    /// pone a las dos asignaciones en fechas distintas a propósito.
+    /// </summary>
+    private static async Task SembrarDosAsignacionesMismoBloqueAsync(sigafi_esContext db)
+    {
+        db.cursos.Add(new cursos { idNivel = 35, idCarrera = 6, Nivel = "TIPO \"C\"" });
+        db.profesores.Add(new profesores { idProfesor = Duenio, apellidos = "PEREZ", nombres = "JUAN", tipoSangre = "O+" });
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .ConId(100).DelProfesor(Duenio).ConNivel(35)
+            .ConRango(new DateOnly(2026, 7, 1), new DateOnly(2026, 12, 31)).Build());
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .ConId(200).DelProfesor(Duenio).ConNivel(35)
+            .ConRango(new DateOnly(2026, 7, 1), new DateOnly(2026, 12, 31)).Build());
+        db.fechas_horarios.Add(new fechas_horarios { idFecha = 500, fecha = Lunes, dia = "Lunes" });
+        db.horas_clases.Add(new FranjaBuilder().ConId(901).DeTipo("Z").DeRango("07:00", "08:00").Build());
+        db.horario_detalle.AddRange(
+            new HorarioDetalleBuilder().ConId(1).DeAsignacion(100).EnFecha(500).EnFranja(901).Build(),
+            new HorarioDetalleBuilder().ConId(2).DeAsignacion(200).EnFecha(500).EnFranja(901).Build());
+        db.cplec_sesiones.Add(new cplec_sesiones
+        {
+            idSesion = 1, idAsignacion = 100, idFecha = 500, numeroBloque = 1,
+            tema = "Señalética", estado = "cerrada", activo = true,
+            usuarioCreacion = Duenio, fechaCreacion = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>Igual que en SesionServiceTests: horario del lunes con 2 franjas contiguas.</summary>
     private static async Task SembrarHorarioAsync(sigafi_esContext db)
     {
@@ -259,5 +291,27 @@ public sealed class AgendaServiceTests
             Array.Empty<int>(), new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 9));
 
         r.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task ObtenerAgenda_Batch_NoMezclaSesionesEntreAsignacionesQueComparteBloque()
+    {
+        // Las asignaciones 100 y 200 comparten (idFecha=500, numeroBloque=1). Solo la
+        // 100 tiene una sesión cerrada ahí. Si el emparejamiento sesión-bloque perdiera
+        // el filtro por idAsignacion, la 200 "heredaría" la sesión de la 100.
+        using var db = CrearContexto(nameof(ObtenerAgenda_Batch_NoMezclaSesionesEntreAsignacionesQueComparteBloque));
+        await SembrarDosAsignacionesMismoBloqueAsync(db);
+
+        var batch = await CrearServicio(db).ObtenerAgendaAsync(
+            new[] { 100, 200 }, Lunes, Lunes);
+
+        var bloque100 = batch.Should().ContainSingle(b => b.IdAsignacion == 100).Which;
+        var bloque200 = batch.Should().ContainSingle(b => b.IdAsignacion == 200).Which;
+
+        bloque100.IdSesion.Should().Be(1);
+        bloque100.Estado.Should().Be(EstadoBloque.Cerrada);
+
+        bloque200.IdSesion.Should().BeNull();
+        bloque200.Estado.Should().Be(EstadoBloque.Pendiente);
     }
 }
