@@ -82,6 +82,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IDistributivoGuard, DistributivoGuard>();
         services.AddScoped<IPeriodosPorNivelService, PeriodosPorNivelService>();
         services.AddScoped<IMisParalelosService, MisParalelosService>();
+        services.AddScoped<IParalelosInspectorService, ParalelosInspectorService>();
         services.AddScoped<INominaAlumnosService, NominaAlumnosService>();
         services.AddScoped<ISesionService, SesionService>();
         services.AddScoped<IAsistenciaService, AsistenciaService>();

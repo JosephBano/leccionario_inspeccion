@@ -15,15 +15,18 @@ public sealed class DistributivoController : ControllerBase
     private readonly IPeriodosPorNivelService _periodos;
     private readonly IMisParalelosService _misParalelos;
     private readonly INominaAlumnosService _nomina;
+    private readonly IParalelosInspectorService _paralelos;
 
     public DistributivoController(
         IPeriodosPorNivelService periodos,
         IMisParalelosService misParalelos,
-        INominaAlumnosService nomina)
+        INominaAlumnosService nomina,
+        IParalelosInspectorService paralelos)
     {
         _periodos = periodos;
         _misParalelos = misParalelos;
         _nomina = nomina;
+        _paralelos = paralelos;
     }
 
     private string? IdProfesorSub => User.FindFirstValue("sub");
@@ -58,6 +61,16 @@ public sealed class DistributivoController : ControllerBase
         var items = await _misParalelos.ResolverAsync(idProfesor, idPeriodo, ct: ct);
         return Ok(new MisParalelosResponseDto(items));
     }
+
+    /// <summary>Todos los paralelos de la carrera 6. Solo inspector.</summary>
+    [HttpGet("paralelos")]
+    [Authorize(Roles = "cplec_inspector")]
+    [ProducesResponseType(typeof(IReadOnlyList<ParaleloDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Paralelos(
+        [FromQuery] string? idPeriodo,
+        [FromQuery] bool soloVigentes,
+        CancellationToken ct) =>
+        Ok(await _paralelos.ListarAsync(idPeriodo, soloVigentes, ct));
 
     /// <summary>
     /// Nómina de alumnos de un paralelo. Docente: solo suyos (validado por

@@ -58,8 +58,9 @@ public sealed class JwtClaimMappingTests
 
         var periodos = new Mock<IPeriodosPorNivelService>();
         var nomina = new Mock<INominaAlumnosService>();
+        var paralelos = new Mock<IParalelosInspectorService>();
 
-        var controller = new DistributivoController(periodos.Object, misParalelos.Object, nomina.Object)
+        var controller = new DistributivoController(periodos.Object, misParalelos.Object, nomina.Object, paralelos.Object)
         {
             ControllerContext = ContextoComoDocente("1804991527"),
         };
