@@ -62,13 +62,21 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
       }
     </header>
 
-    @if (store.errorGuardar(); as e) {
-      <div class="error-banner" role="alert" style="margin: 16px; padding: 16px; border-radius: 8px; background: #fdecea; color: #c5211f; display: flex; align-items: center; gap: 8px;">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <span>{{ e }}</span>
-      </div>
-    } @else if (!store.sesion()) {
-      <p class="loading">Abriendo la sesión de esta clase…</p>
+    <!--
+      Dos errores distintos, dos lugares distintos: si no hay sesión el fallo es
+      de apertura (SIN_HORARIO, nómina) y no hay nada más que mostrar; si ya hay
+      sesión el fallo es de guardado y el banner va DENTRO de la sección, junto a
+      la lista y al botón de reintentar. Ver auditoría 2026-08-08.
+    -->
+    @if (!store.sesion()) {
+      @if (store.errorGuardar(); as e) {
+        <div class="error error-banner" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <span>{{ e }}</span>
+        </div>
+      } @else {
+        <p class="loading">Abriendo la sesión de esta clase…</p>
+      }
     } @else {
       <section class="resumen">
         <mat-chip-set>
@@ -104,6 +112,13 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
             </span>
           }
         </div>
+
+        @if (store.errorGuardar(); as e) {
+          <div class="error" role="alert">
+            <mat-icon aria-hidden="true">cloud_off</mat-icon>
+            <span>{{ e }}</span>
+          </div>
+        }
 
         <div class="acciones">
           <button mat-stroked-button (click)="marcarTodosPresentes()" [disabled]="!store.hayCambios()">
@@ -193,6 +208,8 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
       color: var(--cplec-color-ausente, #c5211f);
       padding: 10px 12px; border-radius: 8px;
     }
+    /* El de apertura es el único contenido de la página: respira más. */
+    .error-banner { margin: 16px 0; padding: 16px; }
     .acciones { display: flex; gap: 8px; flex-wrap: wrap; }
     .lista {
       list-style: none; padding: 0; margin: 0;

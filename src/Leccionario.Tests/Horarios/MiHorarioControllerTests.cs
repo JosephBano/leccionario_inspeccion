@@ -56,4 +56,39 @@ public sealed class MiHorarioControllerTests
         dto.Should().HaveCount(1);
         dto[0].IdAsignacion.Should().Be(100);
     }
+
+    [TestMethod]
+    public async Task Get_SinRango_DelegaNulosParaQueElServicioUseLaSemanaEnCurso()
+    {
+        _serviceMock.Setup(s => s.ObtenerAsync("docente123", null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<BloqueMiHorarioDto>());
+
+        var controller = CrearController("docente123");
+        var response = await controller.Get(null, null, CancellationToken.None);
+
+        response.Should().BeOfType<OkObjectResult>();
+        _serviceMock.Verify(
+            s => s.ObtenerAsync("docente123", null, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task Get_SinClaimSub_NoInventaUnDocenteYPropagaEl401()
+    {
+        // El alcance sale del token y de ningún otro lado: sin `sub` el
+        // controlador pasa cadena vacía y el servicio corta con 401
+        // (ExceptionClassifier mapea UnauthorizedAccessException → 401).
+        _serviceMock.Setup(s => s.ObtenerAsync(string.Empty, It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorizedAccessException("No se puede determinar el docente autenticado."));
+
+        var controller = CrearController(subClaim: null);
+
+        var act = async () => await controller.Get(null, null, CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        _serviceMock.Verify(
+            s => s.ObtenerAsync(
+                It.Is<string>(id => id != string.Empty),
+                It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
 }
