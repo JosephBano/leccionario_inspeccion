@@ -40,3 +40,10 @@ public sealed record ResultadoConflictoDto(
     public static ResultadoConflictoDto Vacio { get; } =
         new(Array.Empty<ConflictoDto>(), Array.Empty<ConflictoDto>());
 }
+
+/// <param name="HoraInicio">Formato <c>HH:mm</c>, como la columna varchar(5).</param>
+public sealed record FranjaDto(
+    int Idhora, string HoraInicio, string HoraFin, int Minutos, int? NumeroHora);
+
+public sealed record CrearFranjaDto(string HoraInicio, string HoraFin, int? NumeroHora);
+
