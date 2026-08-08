@@ -47,12 +47,12 @@ const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const;
             </tr>
           </thead>
           <tbody>
-            @for (fila of store.filas(); track fila.horaInicio) {
+            @for (fila of store.filas(); track fila.horaInicio + '-' + fila.horaFin) {
               <tr>
                 <th scope="row" class="col-hora">{{ fila.horaInicio }}–{{ fila.horaFin }}</th>
-                @for (celda of fila.celdas; track $index) {
+                @for (celdasDia of fila.celdas; track $index) {
                   <td>
-                    @if (celda) {
+                    @for (celda of celdasDia; track celda.idHorarioInicio + '-' + celda.idAsignacion) {
                       <button
                         type="button"
                         class="bloque"

@@ -80,10 +80,25 @@ describe('MiHorarioStore', () => {
     const filas = store.filas();
     expect(filas).toHaveLength(2);
     expect(filas[0].horaInicio).toBe('07:00');
-    expect(filas[0].celdas[0]?.idHorarioInicio).toBe(1);   // lunes
-    expect(filas[0].celdas[2]?.idHorarioInicio).toBe(3);   // miércoles
-    expect(filas[0].celdas[1]).toBeNull();                 // martes
+    expect(filas[0].celdas[0][0]?.idHorarioInicio).toBe(1);   // lunes
+    expect(filas[0].celdas[2][0]?.idHorarioInicio).toBe(3);   // miércoles
+    expect(filas[0].celdas[1]).toHaveLength(0);               // martes vacío
     expect(filas[1].horaInicio).toBe('10:00');
+  });
+
+  it('permite múltiples bloques en la misma celda sin colisión silenciosa', () => {
+    store.irASemanaDe('2026-08-05');
+    httpMock.expectOne((r) => r.url.endsWith('/mi-horario')).flush([
+      bloque({ idAsignacion: 100, fecha: '2026-08-05', horaInicio: '07:00', horaFin: '09:00', idHorarioInicio: 1 }),
+      bloque({ idAsignacion: 200, fecha: '2026-08-05', horaInicio: '07:00', horaFin: '09:00', idHorarioInicio: 2 }),
+    ]);
+
+    const filas = store.filas();
+    expect(filas).toHaveLength(1);
+    const celdaMiercoles = filas[0].celdas[2]; // miércoles
+    expect(celdaMiercoles).toHaveLength(2);
+    expect(celdaMiercoles[0].idAsignacion).toBe(100);
+    expect(celdaMiercoles[1].idAsignacion).toBe(200);
   });
 
   it('guarda un mensaje de error si la petición falla', () => {

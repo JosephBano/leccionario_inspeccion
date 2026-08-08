@@ -80,7 +80,7 @@
 - Consumes: nada de tareas anteriores.
 - Produces: `SinHorarioException` (código `"SIN_HORARIO"`, HTTP 422), consumido por el frontend en la Task 7. `SesionService.CrearAsync` conserva su firma exacta: `Task<SesionDto> CrearAsync(int idAsignacion, string idProfesorDocente, bool esInspector, CrearSesionRequestDto request, CancellationToken ct = default)`.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 En `src/Leccionario.Tests/Asistencia/SesionServiceTests.cs`, **reemplazar completo** el método `Crear_SinHorarioEnLaAsignacion_AceptaFechaLibreYMarcaOrigenLibre` (líneas ~328-341) por:
 
@@ -124,7 +124,7 @@ En `src/Leccionario.Tests/Asistencia/SesionServiceTests.cs`, **reemplazar comple
     }
 ```
 
-- [ ] **Step 2: Correr los tests y verificar que fallan**
+- [x] **Step 2: Correr los tests y verificar que fallan**
 
 ```bash
 cd src && dotnet test --filter "FullyQualifiedName~SesionServiceTests"
@@ -134,7 +134,7 @@ Esperado: FALLAN. `Crear_SinHorarioEnLaAsignacion_LanzaSinHorario` no lanza nada
 
 También fallarán otros tests que crean sesiones sin horario (`Crear_FechaValida_CreaSesionConNomina`, `Crear_FechaFueraDeVentana_LanzaFueraDeVentana`, `Crear_TemaVacio_LanzaValidacion` y los que usen `SembrarAsignacion`). Se arreglan en el Step 5.
 
-- [ ] **Step 3: Crear la excepción**
+- [x] **Step 3: Crear la excepción**
 
 `src/Leccionario.Api/Application/Common/Exceptions/SinHorarioException.cs`:
 
@@ -155,7 +155,7 @@ public sealed class SinHorarioException : AppException
 }
 ```
 
-- [ ] **Step 4: Retirar la rama de modo transición**
+- [x] **Step 4: Retirar la rama de modo transición**
 
 En `src/Leccionario.Api/Application/Asistencia/SesionService.cs`, reemplazar el bloque de líneas 94-117 (desde el comentario `// ---- Anclaje al horario` hasta el cierre del `else`) por:
 
@@ -211,7 +211,7 @@ public sealed class CrearSesionRequestDto
 }
 ```
 
-- [ ] **Step 5: Adaptar los tests que dependían del modo transición**
+- [x] **Step 5: Adaptar los tests que dependían del modo transición**
 
 En `SesionServiceTests.cs`, los tests que usan `SembrarAsignacion` (sin horario) y esperan éxito deben pasar a sembrar horario. Cambios concretos:
 
@@ -236,7 +236,7 @@ En `SesionServiceTests.cs`, los tests que usan `SembrarAsignacion` (sin horario)
 
 5. Para cualquier otro test que falle por `SIN_HORARIO`, aplicar el mismo patrón: sembrar celda y pasar `IdHorarioInicio`.
 
-- [ ] **Step 6: Correr toda la suite backend**
+- [x] **Step 6: Correr toda la suite backend**
 
 ```bash
 cd src && dotnet test
@@ -244,7 +244,7 @@ cd src && dotnet test
 
 Esperado: PASS, con al menos un test más que los 247 de partida.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Leccionario.Api/Application/Common/Exceptions/SinHorarioException.cs \
@@ -270,7 +270,7 @@ git commit -m "feat(asistencia): sin horario planificado no hay asistencia (SIN_
     `Task<IReadOnlyList<BloqueAgendaDto>> ObtenerAgendaAsync(IReadOnlyCollection<int> idsAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default)`.
   - La Task 3 consume esa sobrecarga.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 Agregar a `src/Leccionario.Tests/Asistencia/AgendaServiceTests.cs`:
 
@@ -308,7 +308,7 @@ Agregar a `src/Leccionario.Tests/Asistencia/AgendaServiceTests.cs`:
 
 Si `AgendaServiceTests.cs` no tiene helpers `CrearContexto` / `CrearServicio` / un sembrado con dos asignaciones, agregarlos siguiendo el patrón de `SesionServiceTests.cs:27-31` y `SembrarHorarioAsync`. `SembrarDosAsignacionesAsync` debe crear: `cursos` con `idNivel = 35, idCarrera = 6`; dos asignaciones (100 y 200) de carrera 6; `fechas_horarios` para el lunes 2026-08-03 (`idFecha = 500`) y el martes 2026-08-04 (`idFecha = 501`); franjas Z contiguas 07:00-08:00 y 08:00-09:00; y celdas: asignación 100 el lunes en ambas franjas, asignación 200 el martes en la primera.
 
-- [ ] **Step 2: Correr el test y verificar que falla**
+- [x] **Step 2: Correr el test y verificar que falla**
 
 ```bash
 cd src && dotnet test --filter "FullyQualifiedName~AgendaServiceTests"
@@ -316,7 +316,7 @@ cd src && dotnet test --filter "FullyQualifiedName~AgendaServiceTests"
 
 Esperado: FALLA en compilación — no existe la sobrecarga ni `IdAsignacion`.
 
-- [ ] **Step 3: Cambiar el DTO y la interfaz**
+- [x] **Step 3: Cambiar el DTO y la interfaz**
 
 En `AgendaService.cs`, línea 10:
 
@@ -338,7 +338,7 @@ En `IAgendaService` (línea 22), agregar la sobrecarga:
     Task<IReadOnlyList<BloqueAgendaDto>> ObtenerAgendaAsync(IReadOnlyCollection<int> idsAsignacion, DateOnly desde, DateOnly hasta, CancellationToken ct = default);
 ```
 
-- [ ] **Step 4: Implementar la batch y delegar**
+- [x] **Step 4: Implementar la batch y delegar**
 
 Reemplazar el cuerpo de `ObtenerAgendaAsync` (líneas 38-99) por:
 
@@ -420,7 +420,7 @@ Reemplazar el cuerpo de `ObtenerAgendaAsync` (líneas 38-99) por:
     }
 ```
 
-- [ ] **Step 5: Quitar el N+1 de `DiasSinRegistrarAsync`**
+- [x] **Step 5: Quitar el N+1 de `DiasSinRegistrarAsync`**
 
 Reemplazar el bucle de las líneas 138-148 por:
 
@@ -440,7 +440,7 @@ Reemplazar el bucle de las líneas 138-148 por:
             .OrderByDescending(d => d.DiasVencido).ThenBy(d => d.Fecha).ToList();
 ```
 
-- [ ] **Step 6: Correr toda la suite backend**
+- [x] **Step 6: Correr toda la suite backend**
 
 ```bash
 cd src && dotnet test
@@ -448,7 +448,7 @@ cd src && dotnet test
 
 Esperado: PASS. Si algún test de `AgendaServiceTests` o de reportes construye un `BloqueAgendaDto` posicionalmente, hay que agregarle el `idAsignacion` como primer argumento.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/Leccionario.Api/Application/Asistencia/AgendaService.cs \
@@ -471,7 +471,7 @@ git commit -m "refactor(asistencia): agenda por lote y sin N+1 en dias-sin-regis
   - `IMiHorarioService.ObtenerAsync(string idProfesor, DateOnly? desde, DateOnly? hasta, CancellationToken ct = default)` → `Task<IReadOnlyList<BloqueMiHorarioDto>>`
   - La Task 4 consume la interfaz; la Task 5 consume la forma JSON del DTO.
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [x] **Step 1: Escribir los tests que fallan**
 
 `src/Leccionario.Tests/Horarios/MiHorarioServiceTests.cs`:
 
@@ -674,7 +674,7 @@ public sealed class MiHorarioServiceTests
 
 Si algún builder no tiene los métodos usados (`ConParalelo`, `ConRango`, `DelProfesor`, `ConNivel`), revisar `src/Leccionario.Tests/Builders/` y usar los que existan; no inventar API de builder.
 
-- [ ] **Step 2: Correr los tests y verificar que fallan**
+- [x] **Step 2: Correr los tests y verificar que fallan**
 
 ```bash
 cd src && dotnet test --filter "FullyQualifiedName~MiHorarioServiceTests"
@@ -682,7 +682,7 @@ cd src && dotnet test --filter "FullyQualifiedName~MiHorarioServiceTests"
 
 Esperado: FALLA en compilación — `MiHorarioService` no existe.
 
-- [ ] **Step 3: Implementar el servicio**
+- [x] **Step 3: Implementar el servicio**
 
 `src/Leccionario.Api/Application/Horarios/Services/MiHorarioService.cs`:
 
@@ -792,7 +792,7 @@ public sealed class MiHorarioService : IMiHorarioService
 }
 ```
 
-- [ ] **Step 4: Correr los tests y verificar que pasan**
+- [x] **Step 4: Correr los tests y verificar que pasan**
 
 ```bash
 cd src && dotnet test --filter "FullyQualifiedName~MiHorarioServiceTests"
@@ -800,7 +800,7 @@ cd src && dotnet test --filter "FullyQualifiedName~MiHorarioServiceTests"
 
 Esperado: PASS, 9 tests.
 
-- [ ] **Step 5: Correr toda la suite**
+- [x] **Step 5: Correr toda la suite**
 
 ```bash
 cd src && dotnet test
@@ -808,7 +808,7 @@ cd src && dotnet test
 
 Esperado: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/Leccionario.Api/Application/Horarios/Services/MiHorarioService.cs \
@@ -828,7 +828,7 @@ git commit -m "feat(horarios): MiHorarioService con vigencia por ventana de asig
 - Consumes: `IMiHorarioService.ObtenerAsync` de la Task 3.
 - Produces: el endpoint HTTP `GET /api/mi-horario?desde=&hasta=` que consume la Task 5.
 
-- [ ] **Step 1: Registrar el servicio en DI**
+- [x] **Step 1: Registrar el servicio en DI**
 
 En `src/Leccionario.Api/Extensions/DependencyInjectionExtensions.cs`, justo después de la línea 96 (`services.AddScoped<IAgendaService, AgendaService>();`):
 
@@ -836,7 +836,7 @@ En `src/Leccionario.Api/Extensions/DependencyInjectionExtensions.cs`, justo desp
         services.AddScoped<IMiHorarioService, MiHorarioService>();
 ```
 
-- [ ] **Step 2: Escribir el controlador**
+- [x] **Step 2: Escribir el controlador**
 
 `src/Leccionario.Api/Controllers/Horarios/MiHorarioController.cs`:
 
@@ -876,7 +876,7 @@ public sealed class MiHorarioController : ControllerBase
 }
 ```
 
-- [ ] **Step 3: Verificar que compila y que la suite sigue verde**
+- [x] **Step 3: Verificar que compila y que la suite sigue verde**
 
 ```bash
 cd src && dotnet test
@@ -884,7 +884,7 @@ cd src && dotnet test
 
 Esperado: PASS. Si existe un smoke test que enumera rutas (`ApiSmokeTests.cs`), puede requerir agregar la ruta nueva; revisar el fallo antes de tocar nada.
 
-- [ ] **Step 4: Verificar el endpoint a mano**
+- [x] **Step 4: Verificar el endpoint a mano**
 
 ```bash
 cd src && dotnet run --project Leccionario.Api
@@ -898,7 +898,7 @@ curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/mi-horario"
 
 Esperado: `200` con un array (posiblemente vacío si el docente no tiene horario cargado). Con un token de inspector: `403` (el endpoint es solo `cplec_docente`).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/Leccionario.Api/Controllers/Horarios/MiHorarioController.cs \
@@ -923,7 +923,7 @@ git commit -m "feat(horarios): GET /api/mi-horario para el docente"
   - `MiHorarioStore` con: `cargar()`, `cambiarSemana(delta: number)`, `irAEstaSemana()`, y selectores `bloques()`, `lunes()`, `filas()`, `cargando()`, `error()`.
   - `interface FilaHorario { horaInicio: string; horaFin: string; celdas: (BloqueMiHorario | null)[] }` — `celdas` tiene 7 posiciones, lunes a domingo. La Task 6 consume `filas()`.
 
-- [ ] **Step 1: Escribir el modelo y el servicio**
+- [x] **Step 1: Escribir el modelo y el servicio**
 
 `client/src/app/features/docente/models/mi-horario.model.ts`:
 
@@ -970,7 +970,7 @@ export class MiHorarioService {
 }
 ```
 
-- [ ] **Step 2: Escribir el test del store que falla**
+- [x] **Step 2: Escribir el test del store que falla**
 
 `client/src/app/features/docente/pages/mi-horario/mi-horario.store.spec.ts`:
 
@@ -1074,7 +1074,7 @@ describe('MiHorarioStore', () => {
 });
 ```
 
-- [ ] **Step 3: Correr el test y verificar que falla**
+- [x] **Step 3: Correr el test y verificar que falla**
 
 ```bash
 cd client && npm test -- mi-horario.store
@@ -1082,7 +1082,7 @@ cd client && npm test -- mi-horario.store
 
 Esperado: FALLA — no existe `mi-horario.store.ts`.
 
-- [ ] **Step 4: Implementar el store**
+- [x] **Step 4: Implementar el store**
 
 `client/src/app/features/docente/pages/mi-horario/mi-horario.store.ts`:
 
@@ -1192,7 +1192,7 @@ export class MiHorarioStore {
 }
 ```
 
-- [ ] **Step 5: Correr los tests y verificar que pasan**
+- [x] **Step 5: Correr los tests y verificar que pasan**
 
 ```bash
 cd client && npm test -- mi-horario.store
@@ -1200,7 +1200,7 @@ cd client && npm test -- mi-horario.store
 
 Esperado: PASS, 4 tests.
 
-- [ ] **Step 6: Lint y build**
+- [x] **Step 6: Lint y build**
 
 ```bash
 cd client && npm run lint && npm run build
@@ -1208,7 +1208,7 @@ cd client && npm run lint && npm run build
 
 Esperado: sin errores ni warnings.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/app/features/docente/models/mi-horario.model.ts \
@@ -1230,7 +1230,7 @@ git commit -m "feat(client): store y servicio de mi-horario del docente"
 - Consumes: `MiHorarioStore` (`filas()`, `dias()`, `lunes()`, `cargando()`, `error()`, `cambiarSemana()`, `irAEstaSemana()`) y `FilaHorario` de la Task 5.
 - Produces: la ruta `/mi-horario` y la navegación a `/paralelos/:idAsignacion/pasar-lista?idHorarioInicio=N`, que la Task 7 espera.
 
-- [ ] **Step 1: Escribir la página**
+- [x] **Step 1: Escribir la página**
 
 `client/src/app/features/docente/pages/mi-horario/mi-horario.page.ts`:
 
@@ -1368,7 +1368,7 @@ export class MiHorarioPage {
 }
 ```
 
-- [ ] **Step 2: Registrar la ruta**
+- [x] **Step 2: Registrar la ruta**
 
 En `client/src/app/app.routes.ts`, agregar como primera ruta hija después del `redirectTo`:
 
@@ -1396,7 +1396,7 @@ Y cambiar la redirección por rol (líneas 31-38) para que el docente aterrice e
         },
 ```
 
-- [ ] **Step 3: Agregar la entrada al sidebar**
+- [x] **Step 3: Agregar la entrada al sidebar**
 
 En `client/src/app/layout/main-layout/main-layout.ts`, **antes** de la línea 21:
 
@@ -1404,7 +1404,7 @@ En `client/src/app/layout/main-layout/main-layout.ts`, **antes** de la línea 21
   { label: 'Mi horario', path: '/mi-horario', icon: 'calendar_month', roles: [Roles.docente] },
 ```
 
-- [ ] **Step 4: Verificar tests, lint y build**
+- [x] **Step 4: Verificar tests, lint y build**
 
 ```bash
 cd client && npm test && npm run lint && npm run build
@@ -1412,11 +1412,11 @@ cd client && npm test && npm run lint && npm run build
 
 Esperado: PASS en todo. Si algún test de rutas o de `main-layout` afirma sobre la lista de items o el destino de la redirección, actualizarlo para reflejar los cambios.
 
-- [ ] **Step 5: Verificar en el navegador**
+- [x] **Step 5: Verificar en el navegador**
 
 Arrancar el backend (`cd src && dotnet run --project Leccionario.Api`) y el frontend (`cd client && npm start`). Entrar como docente con horario cargado y confirmar: aterriza en `/mi-horario`, el grid muestra los bloques de la semana, los futuros están deshabilitados, y un click en un bloque pasado navega a `pasar-lista` con `?idHorarioInicio=`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/src/app/features/docente/pages/mi-horario/mi-horario.page.ts \
@@ -1438,7 +1438,7 @@ git commit -m "feat(client): pagina mi-horario del docente con grid semanal"
 - Consumes: la navegación con `?idHorarioInicio=` de la Task 6; el código `SIN_HORARIO` de la Task 1.
 - Produces: `PasarListaStore.cargar(idAsignacion: number, idHorarioInicio: number, temaInicial: string): void` — firma nueva, sin `fecha`.
 
-- [ ] **Step 1: Escribir el test que falla**
+- [x] **Step 1: Escribir el test que falla**
 
 Agregar a `client/src/app/features/docente/pages/pasar-lista/pasar-lista.store.spec.ts`:
 
@@ -1465,7 +1465,7 @@ Agregar a `client/src/app/features/docente/pages/pasar-lista/pasar-lista.store.s
 
 Ajustar el `beforeEach` y los mocks existentes del spec si la firma de `cargar` cambia en todos los tests del archivo.
 
-- [ ] **Step 2: Correr el test y verificar que falla**
+- [x] **Step 2: Correr el test y verificar que falla**
 
 ```bash
 cd client && npm test -- pasar-lista.store
@@ -1473,7 +1473,7 @@ cd client && npm test -- pasar-lista.store
 
 Esperado: FALLA — la firma actual es `cargar(idAsignacion, fecha, temaInicial, idHorarioInicio?)` y el body incluye `fecha`.
 
-- [ ] **Step 3: Cambiar la firma del store**
+- [x] **Step 3: Cambiar la firma del store**
 
 En `client/src/app/features/docente/pages/pasar-lista/pasar-lista.store.ts`, reemplazar la firma y el cuerpo del método `cargar` (desde la línea 83) por:
 
@@ -1515,7 +1515,7 @@ y, dentro del `next` de la nómina, cambiar la llamada:
 
 Si el tipo del request (`CrearSesionRequest` en `client/src/app/features/docente/models/asistencia.model.ts`) declara `fecha` como obligatorio, cambiarlo a opcional y marcarlo como obsoleto en un comentario.
 
-- [ ] **Step 4: Cambiar la página**
+- [x] **Step 4: Cambiar la página**
 
 En `client/src/app/features/docente/pages/pasar-lista/pasar-lista.page.ts`:
 
@@ -1563,7 +1563,7 @@ export class PasarListaPage {
 
 5. Agregar `import { Router } from '@angular/router';` a los imports del archivo.
 
-- [ ] **Step 5: Correr los tests y verificar que pasan**
+- [x] **Step 5: Correr los tests y verificar que pasan**
 
 ```bash
 cd client && npm test -- pasar-lista
@@ -1571,7 +1571,7 @@ cd client && npm test -- pasar-lista
 
 Esperado: PASS.
 
-- [ ] **Step 6: Verificar que `mis-paralelos` no ofrece pasar lista directo**
+- [x] **Step 6: Verificar que `mis-paralelos` no ofrece pasar lista directo**
 
 ```bash
 grep -n "pasar-lista" client/src/app/features/docente/pages/mis-paralelos/mis-paralelos.page.ts
@@ -1579,7 +1579,7 @@ grep -n "pasar-lista" client/src/app/features/docente/pages/mis-paralelos/mis-pa
 
 Esperado: **sin resultados** — la página ya solo enlaza a `agenda` (`mis-paralelos.page.ts:98`). Si aparece algún enlace a `pasar-lista`, eliminarlo dejando solo "Ver agenda".
 
-- [ ] **Step 7: Suite completa, lint y build**
+- [x] **Step 7: Suite completa, lint y build**
 
 ```bash
 cd client && npm test && npm run lint && npm run build
@@ -1587,7 +1587,7 @@ cd client && npm test && npm run lint && npm run build
 
 Esperado: PASS en todo.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add client/src/app/features/docente/pages/pasar-lista/ \
@@ -1610,7 +1610,7 @@ git commit -m "feat(client): pasar lista solo desde un bloque de horario"
 - Consumes: todo lo construido en las Tasks 1-7.
 - Produces: nada de código.
 
-- [ ] **Step 1: Tabla de errores en `docs/04-contrato-api.md`**
+- [x] **Step 1: Tabla de errores en `docs/04-contrato-api.md`**
 
 Agregar dos filas en la tabla de códigos (después de la fila `422 FUERA_DE_VENTANA`):
 
@@ -1620,7 +1620,7 @@ Agregar dos filas en la tabla de códigos (después de la fila `422 FUERA_DE_VEN
 | 422 | `RANGO_EXCEDE_TOPE` | El rango de fechas pedido supera las 16 semanas |
 ```
 
-- [ ] **Step 2: Documentar `GET /api/mi-horario`**
+- [x] **Step 2: Documentar `GET /api/mi-horario`**
 
 En la sección `## Docente`, después de `### GET /api/periodos/por-nivel`, agregar:
 
@@ -1664,7 +1664,7 @@ alcance sale del claim `sub`.
 `Futura` (aún no ocurre; no se puede registrar).
 ````
 
-- [ ] **Step 3: Reescribir `POST /api/paralelos/{idAsignacion}/sesiones`**
+- [x] **Step 3: Reescribir `POST /api/paralelos/{idAsignacion}/sesiones`**
 
 Reemplazar la sección completa (líneas 167-192) por:
 
@@ -1701,7 +1701,7 @@ Rol: `cplec_docente`. Abre la clase de un **bloque de horario**.
 ignoran**.
 ````
 
-- [ ] **Step 4: Addendum en ADR-008**
+- [x] **Step 4: Addendum en ADR-008**
 
 En `docs/adr/ADR-008-horarios-en-tabla-compartida.md`, al final de la decisión 9, agregar:
 
@@ -1715,7 +1715,7 @@ En `docs/adr/ADR-008-horarios-en-tabla-compartida.md`, al final de la decisión 
 > Ver `docs/superpowers/specs/2026-08-08-asistencia-anclada-horario-design.md`.
 ```
 
-- [ ] **Step 5: Regla de vigencia y anclaje en `docs/10`**
+- [x] **Step 5: Regla de vigencia y anclaje en `docs/10`**
 
 Agregar una sección al final de `docs/10-navegacion-distributivo.md`:
 
@@ -1736,7 +1736,7 @@ elige. Sin celdas de horario activas para la asignación, `POST .../sesiones` re
 `esTardia` y `diasRetraso` congelados en el primer guardado.
 ```
 
-- [ ] **Step 6: Hito M4c en el roadmap**
+- [x] **Step 6: Hito M4c en el roadmap**
 
 En `docs/00-roadmap.md`, agregar una fila a la tabla de hitos después de **M4b** (y su nodo en el diagrama Mermaid, entre `M4` y `M5`):
 
@@ -1751,7 +1751,7 @@ En el diagrama:
   M4c --> M5
 ```
 
-- [ ] **Step 7: Actualizar `CLAUDE.md`**
+- [x] **Step 7: Actualizar `CLAUDE.md`**
 
 En §**Modelo de datos — lo no obvio**, reemplazar la viñeta "Las sesiones son **por día, no por hora**. Sin FK a `horas_clases`." por:
 
@@ -1774,7 +1774,7 @@ En §**Estado actual**, agregar tras la viñeta de M4b:
 
 Actualizar los conteos de tests de §Comandos y §Estado actual con los números reales al terminar.
 
-- [ ] **Step 8: Verificación final completa**
+- [x] **Step 8: Verificación final completa**
 
 ```bash
 cd src && dotnet test
@@ -1783,7 +1783,7 @@ cd ../client && npm test && npm run lint && npm run build
 
 Esperado: todo verde. Anotar los conteos reales de tests y corregirlos en `CLAUDE.md` si difieren de lo escrito en el Step 7.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add docs/ CLAUDE.md

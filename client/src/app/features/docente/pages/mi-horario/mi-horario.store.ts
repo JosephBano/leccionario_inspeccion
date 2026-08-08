@@ -2,11 +2,11 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { MiHorarioService } from '@features/docente/services/mi-horario.service';
 import type { BloqueMiHorario } from '@features/docente/models/mi-horario.model';
 
-/** Una franja horaria con sus siete celdas, de lunes a domingo. */
+/** Una franja horaria con sus siete celdas (cada una con su lista de bloques), de lunes a domingo. */
 export interface FilaHorario {
   readonly horaInicio: string;
   readonly horaFin: string;
-  readonly celdas: readonly (BloqueMiHorario | null)[];
+  readonly celdas: readonly BloqueMiHorario[][];
 }
 
 /** Lunes de la semana que contiene `fechaISO`, en formato ISO. */
@@ -54,17 +54,19 @@ export class MiHorarioStore {
   /** Bloques agrupados: una fila por franja distinta, una columna por día. */
   readonly filas = computed<FilaHorario[]>(() => {
     const dias = this.dias();
-    const porFranja = new Map<string, FilaHorario>();
+    const porFranja = new Map<string, { horaInicio: string; horaFin: string; celdas: BloqueMiHorario[][] }>();
 
     for (const b of this._bloques()) {
       const clave = `${b.horaInicio}-${b.horaFin}`;
       let fila = porFranja.get(clave);
       if (!fila) {
-        fila = { horaInicio: b.horaInicio, horaFin: b.horaFin, celdas: Array(7).fill(null) };
+        fila = { horaInicio: b.horaInicio, horaFin: b.horaFin, celdas: Array.from({ length: 7 }, () => []) };
         porFranja.set(clave, fila);
       }
       const col = dias.indexOf(b.fecha);
-      if (col >= 0) (fila.celdas as (BloqueMiHorario | null)[])[col] = b;
+      if (col >= 0) {
+        fila.celdas[col].push(b);
+      }
     }
 
     return [...porFranja.values()].sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));

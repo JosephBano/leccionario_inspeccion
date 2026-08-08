@@ -62,7 +62,12 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
       }
     </header>
 
-    @if (!store.sesion()) {
+    @if (store.errorGuardar(); as e) {
+      <div class="error-banner" role="alert" style="margin: 16px; padding: 16px; border-radius: 8px; background: #fdecea; color: #c5211f; display: flex; align-items: center; gap: 8px;">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <span>{{ e }}</span>
+      </div>
+    } @else if (!store.sesion()) {
       <p class="loading">Abriendo la sesión de esta clase…</p>
     } @else {
       <section class="resumen">
@@ -99,13 +104,6 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
             </span>
           }
         </div>
-
-        @if (store.errorGuardar(); as e) {
-          <div class="error" role="alert">
-            <mat-icon aria-hidden="true">cloud_off</mat-icon>
-            <span>{{ e }}</span>
-          </div>
-        }
 
         <div class="acciones">
           <button mat-stroked-button (click)="marcarTodosPresentes()" [disabled]="!store.hayCambios()">
@@ -252,7 +250,13 @@ export class PasarListaPage {
       if (!id) return;
 
       // Sin bloque no hay asistencia: se vuelve a la agenda a elegirlo.
-      if (bloque === null || bloque === undefined || Number.isNaN(Number(bloque))) {
+      if (
+        bloque === null ||
+        bloque === undefined ||
+        String(bloque).trim() === '' ||
+        Number.isNaN(Number(bloque)) ||
+        Number(bloque) <= 0
+      ) {
         this.snack.open('Elige el bloque de clase para pasar lista.', 'OK', { duration: 4000 });
         void this.router.navigate(['/paralelos', id, 'agenda']);
         return;

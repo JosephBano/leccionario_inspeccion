@@ -76,8 +76,6 @@ export class PasarListaStore {
   );
 
   /**
-   * Carga inicial: pide la nómina y, si ya hay sesión persistida para el día
-  /**
    * Carga inicial: pide la nómina y abre (o recupera) la sesión del bloque de
    * horario indicado. `idHorarioInicio` es obligatorio: sin bloque no hay
    * asistencia (spec 2026-08-08 §D2).
