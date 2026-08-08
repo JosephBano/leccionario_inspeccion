@@ -88,7 +88,7 @@ Ver [`docs/03-autenticacion-rbac.md`](docs/03-autenticacion-rbac.md) sección 5.
 
 ```bash
 ./scripts/setup-hooks.sh                    # una vez por clon
-cd src    && dotnet test                    # 140 tests backend
+cd src    && dotnet test                    # 239 tests backend
 cd client && npm test && npm run lint && npm run build   # 24 tests frontend + lint + build
 ```
 
@@ -117,12 +117,10 @@ estado `activo` se valida **después** de la credencial, y por qué el mensaje d
 
 - Documentación, gobernanza de git, scripts SQL y RBAC seed: listos.
 - Backend scaffoldeado en `src/`. M3 completo: auth + DistributivoGuard +
-  endpoints de distributivo + sesiones + asistencia + perfil. **140 tests verdes**.
-- **Migraciones 001–003 aplicadas en desarrollo** (2026-08-06). Las tablas
-  `cplec_sesiones`, `cplec_asistencias` y `cplec_asistencias_historial` existen y
-  están vacías. El sistema `cplec` y los dos roles están en el RBAC.
-- **Roles asignados a personas** (2026-08-07). Un docente y un inspector
-  hacen login contra el backend.
+  endpoints de distributivo + sesiones + asistencia + perfil.
+- **Migraciones 001–005 aplicadas en desarrollo** (2026-08-07).
+- **M4b Backend de Horarios del inspector completado** (commit `abfc863`). **239 tests backend verdes**.
+  Grid semanal, catálogo franjas Z, solapamiento, operaciones por rango con topes, anclaje de sesión a horario, tardanza congelada y reportes de inspección.
 - Frontend scaffoldeado en `client/` (Angular 21). Login funcional con refresh;
   mis paralelos; pasar lista ligada a M3. **24 tests frontend verdes**.
 - Producción: sin aplicar.

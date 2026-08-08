@@ -50,7 +50,8 @@ Leyenda: ✅ Done · ⛔ Next inmediato · 🔜 Siguiente fase · ⏳ Backlog ·
 | **M3c**| Sesiones y registro de asistencia                      |   ✅   | (en `dv_jb`) `feature/sesiones-asistencia`        | `POST /api/paralelos/{idAsignacion}/sesiones` (idempotente + ventana), `GET/PUT /api/sesiones/{idSesion}`, `POST .../cerrar`, `POST .../reabrir` (solo inspector + motivo), `POST .../asistencias` (idempotente + historial + transacción); 16 tests nuevos.            | M3b           |
 | **M3d**| `MiPerfil` con paralelos reales                         |   ✅   | (en `dv_jb`) `feature/mi-perfil-paralelos`         | `GET /api/auth/me` consume `IMisParalelosService` y devuelve la nómina de paralelos del distributivo; inspectores ven lista vacía; 2 tests nuevos.            | M3c           |
 | **M4** | Frontend Angular 21 + login + pasar lista              |   ✅   | (en `dv_jb`) `feature/frontend-bootstrap`       | `client/` con Angular 21 (standalone, signals, Vitest, Material); login funcional con refresh + interceptor + guards; mis paralelos y pasar lista ligados a M3; 24 tests frontend verdes; `npm run lint` y `npm run build` sin warnings. | M3d + `docs/06` actualizado |
-| **M5** | Reportes inspector + exportación XLSX/PDF              |   ⏳   | (a crear) `feature/reportes-core`               | Endpoints `/api/reportes/*` (por paralelo, por estudiante, por docente, resumen); UI inspector; exportación XLSX/PDF con `?formato=`.                                                                                    | M4            |
+| **M4b**| Horarios del inspector — backend                        |   ✅   | (en `dv_jb`) commit `abfc863`                    | 13 tareas TDD completadas, 91 tests nuevos (239 tests backend verdes total). Grid de horarios, CRUD de franjas Z, validación de solapamiento, operaciones por rango con topes, anclaje de sesión al horario, tardanza congelada y reportes del inspector. | M3c + ADR-008 |
+| **M5** | Reportes inspector + exportación XLSX/PDF              |   ⏳   | (a crear) `feature/reportes-core`               | Endpoints `/api/reportes/*` (por paralelo, por estudiante, por docente, resumen); UI inspector; exportación XLSX/PDF con `?formato=`.                                                                                    | M4 + M4b      |
 | **M6** | Auditoría persistente + CI gate con cobertura          |   ⏳   | (a crear) `feature/auditoria-bd`                 | `AuditMiddleware` escribe en `gest_audit_registros`; CI exige cobertura mínima (umbral a definir en ADR).                                                                                                            | M3            |
 | **Prod** | Despliegue a producción `sigafi_es`                  |   ⏔   | —                                               | Backup verificado; 001–003 aplicadas en orden; rollback probado; sin secretos en repo; smoke test de `/api/auth/me` con persona real.                                                                                  | M3 + M5 (parcial) |
 
@@ -140,6 +141,10 @@ cd client && npm ci && npm test && npm run lint && npm run build
   login con refresh; mis paralelos; pasar lista (ciclo presente→ausente→atraso→justificado,
   guardado idempotente, indicador "sin guardar", `beforeunload` con cambios pendientes).
   24 tests frontend verdes. Backend sigue 140/140. CI frontend deja de omitirse.
+- ✅ **M4b — Horarios del inspector (backend)** (en `dv_jb`, commit `abfc863`). 13 tareas TDD completadas
+  con 91 tests nuevos. **239 tests backend verdes**. Grid semanal de horarios, catálogo de franjas Z,
+  solapamiento de rangos, operaciones por rango con topes (16 semanas, 500 filas), anclaje de sesión al horario,
+  tardanza congelada y reportes de tardías/días sin registrar para el inspector.
 - 🔜 **Próxima fase (M5)**: reportes inspector con exportación XLSX/PDF.
 - ⏔ **Producción**: sin aplicar hasta cerrar M5.
 
