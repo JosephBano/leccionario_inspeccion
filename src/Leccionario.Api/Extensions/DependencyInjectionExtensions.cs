@@ -92,6 +92,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IConflictoHorarioService, ConflictoHorarioService>();
         services.AddScoped<IEscrituraSerializable, EscrituraSerializable>();
         services.AddScoped<IHorarioService, HorarioService>();
+        services.AddScoped<IHorarioRangoService, HorarioRangoService>();
 
         return services;
     }

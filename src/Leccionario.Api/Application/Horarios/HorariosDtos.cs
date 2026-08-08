@@ -73,4 +73,18 @@ public sealed record CrearCeldaDto(
 
 public sealed record CeldaCreadaDto(int IdHorario, IReadOnlyList<ConflictoDto> Advertencias);
 
+/// <param name="Dia">Día de la semana en español sin tilde: Lunes … Domingo.</param>
+public sealed record OperacionRangoDto(
+    int IdAsignacion, string Dia, int Idhora, DateOnly Desde, DateOnly Hasta,
+    string? TipoBloque = null, bool ConfirmarAdvertencias = false);
+
+public sealed record DetalleOperacionDto(
+    DateOnly Fecha, bool Exitoso, string? MotivoFallo, int? IdHorario);
+
+/// <param name="Advertencia">P. ej. ASIGNACION_SIN_VENTANA. No bloquea.</param>
+public sealed record ResultadoRangoDto(
+    int TotalProcesados, int TotalExitosos, int TotalFallidos,
+    IReadOnlyList<DetalleOperacionDto> Detalles, string? Advertencia);
+
+
 

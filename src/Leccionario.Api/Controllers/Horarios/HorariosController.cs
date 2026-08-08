@@ -15,11 +15,16 @@ public sealed class HorariosController : ControllerBase
 {
     private readonly IHorarioService _horarios;
     private readonly IConflictoHorarioService _conflictos;
+    private readonly IHorarioRangoService _rangos;
 
-    public HorariosController(IHorarioService horarios, IConflictoHorarioService conflictos)
+    public HorariosController(
+        IHorarioService horarios,
+        IConflictoHorarioService conflictos,
+        IHorarioRangoService rangos)
     {
         _horarios = horarios;
         _conflictos = conflictos;
+        _rangos = rangos;
     }
 
     /// <summary>Grid de una semana. El paralelo es la 5-tupla completa.</summary>
@@ -65,4 +70,32 @@ public sealed class HorariosController : ControllerBase
         await _horarios.DesactivarAsync(idHorario, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// Replica una celda sobre un rango. Rango explícito obligatorio, máximo
+    /// 16 semanas y 500 filas por operación (ADR-008 decisión 11).
+    /// </summary>
+    [HttpPost("replicar-rango")]
+    [Authorize(Roles = "cplec_inspector")]
+    [ProducesResponseType(typeof(ResultadoRangoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ReplicarRango(
+        [FromBody] OperacionRangoDto request, CancellationToken ct) =>
+        Ok(await _rangos.ReplicarAsync(request, ct: ct));
+
+    [HttpPut("rango")]
+    [Authorize(Roles = "cplec_inspector")]
+    [ProducesResponseType(typeof(ResultadoRangoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ActualizarRango(
+        [FromBody] OperacionRangoDto request, CancellationToken ct) =>
+        Ok(await _rangos.ActualizarAsync(request, ct: ct));
+
+    [HttpDelete("rango")]
+    [Authorize(Roles = "cplec_inspector")]
+    [ProducesResponseType(typeof(ResultadoRangoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> EliminarRango(
+        [FromBody] OperacionRangoDto request, CancellationToken ct) =>
+        Ok(await _rangos.EliminarAsync(request, ct: ct));
 }
