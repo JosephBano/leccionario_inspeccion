@@ -1,3 +1,4 @@
+using Leccionario.Api.Application.Asistencia.Services;
 using Leccionario.Api.Application.Common.Exceptions;
 using Leccionario.Api.Domain.Entities;
 using Leccionario.Api.Infrastructure.DbContexts;
@@ -8,8 +9,17 @@ namespace Leccionario.Api.Application.Horarios.Services;
 /// <summary>Grid semanal y CRUD de celda del horario. Ver spec sección 5.5.</summary>
 public interface IHorarioService
 {
+    /// <summary>
+    /// El docente solo ve el grid de su propio paralelo: <paramref name="idProfesorDocente"/>
+    /// pasa por <c>DistributivoGuard</c> igual que el resto del alcance de datos.
+    /// El inspector no tiene restricción.
+    /// </summary>
     /// <param name="lunes">Primer día de la semana a mostrar.</param>
-    Task<GridDto> ObtenerGridAsync(ParaleloClaveDto p, DateOnly lunes, CancellationToken ct = default);
+    /// <param name="idProfesorDocente">Cédula del claim <c>sub</c>; ignorado si <paramref name="esInspector"/> es <c>true</c>.</param>
+    Task<GridDto> ObtenerGridAsync(
+        ParaleloClaveDto p, DateOnly lunes,
+        string? idProfesorDocente, bool esInspector,
+        CancellationToken ct = default);
 
     Task<CeldaCreadaDto> CrearAsync(CrearCeldaDto req, CancellationToken ct = default);
     Task<CeldaCreadaDto> ActualizarAsync(int idHorario, CrearCeldaDto req, CancellationToken ct = default);
@@ -30,6 +40,7 @@ public sealed class HorarioService : IHorarioService
     private readonly IConflictoHorarioService _conflictos;
     private readonly IFranjaService _franjas;
     private readonly IEscrituraSerializable _escritura;
+    private readonly IDistributivoGuard _distributivo;
 
     public HorarioService(
         sigafi_esContext db,
@@ -37,7 +48,8 @@ public sealed class HorarioService : IHorarioService
         IFranjaZGuard franjaZ,
         IConflictoHorarioService conflictos,
         IFranjaService franjas,
-        IEscrituraSerializable escritura)
+        IEscrituraSerializable escritura,
+        IDistributivoGuard distributivo)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _carrera = carrera ?? throw new ArgumentNullException(nameof(carrera));
@@ -45,12 +57,23 @@ public sealed class HorarioService : IHorarioService
         _conflictos = conflictos ?? throw new ArgumentNullException(nameof(conflictos));
         _franjas = franjas ?? throw new ArgumentNullException(nameof(franjas));
         _escritura = escritura ?? throw new ArgumentNullException(nameof(escritura));
+        _distributivo = distributivo ?? throw new ArgumentNullException(nameof(distributivo));
     }
 
     public async Task<GridDto> ObtenerGridAsync(
-        ParaleloClaveDto p, DateOnly lunes, CancellationToken ct = default)
+        ParaleloClaveDto p, DateOnly lunes,
+        string? idProfesorDocente, bool esInspector,
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(p);
+
+        if (!esInspector && string.IsNullOrWhiteSpace(idProfesorDocente))
+            throw new UnauthorizedAccessException("No se puede determinar el docente autenticado.");
+
+        await _distributivo.EnsureDocenteTieneParaleloAsync(
+            idProfesorDocente ?? string.Empty,
+            p.IdPeriodo, p.IdNivel, p.IdSeccion, p.IdModalidad, p.Paralelo,
+            esInspector, ct);
 
         var franjas = await _franjas.ListarAsync(ct);
         var fechas = Enumerable.Range(0, 7).Select(lunes.AddDays).ToList();

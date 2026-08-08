@@ -62,4 +62,38 @@ public sealed class DistributivoGuard : IDistributivoGuard
         if (!ok)
             throw new DistributivoAjenoException();
     }
+
+    public async Task EnsureDocenteTieneParaleloAsync(
+        string idProfesor,
+        string idPeriodo,
+        int idNivel,
+        int idSeccion,
+        int idModalidad,
+        string paralelo,
+        bool esInspector,
+        CancellationToken ct = default)
+    {
+        if (esInspector)
+            return; // Bypass explícito: el inspector ya pasó [Authorize(Roles = "cplec_inspector")]. No requiere idProfesor.
+
+        if (string.IsNullOrWhiteSpace(idProfesor))
+            throw new UnauthorizedAccessException("No se puede determinar el docente autenticado.");
+
+        var paraleloNorm = paralelo.Trim();
+        var ok = await _db.asignaciones_profesores
+            .AsNoTracking()
+            .AnyAsync(a =>
+                a.idProfesor == idProfesor
+                && a.idPeriodo == idPeriodo
+                && a.idNivel == idNivel
+                && a.idSeccion == idSeccion
+                && a.idModalidad == idModalidad
+                && a.paralelo != null && a.paralelo.Trim() == paraleloNorm
+                && (a.activo == null || a.activo == 1)
+                && (a.esActivaAsignacion == null || a.esActivaAsignacion == 1),
+                ct);
+
+        if (!ok)
+            throw new DistributivoAjenoException();
+    }
 }

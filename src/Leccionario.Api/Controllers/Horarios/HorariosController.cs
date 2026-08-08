@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Leccionario.Api.Application.Horarios;
 using Leccionario.Api.Application.Horarios.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -27,7 +28,15 @@ public sealed class HorariosController : ControllerBase
         _rangos = rangos;
     }
 
-    /// <summary>Grid de una semana. El paralelo es la 5-tupla completa.</summary>
+    private string? IdProfesorSub => User.FindFirstValue("sub");
+
+    private bool EsInspector => User.IsInRole("cplec_inspector");
+
+    /// <summary>
+    /// Grid de una semana. El paralelo es la 5-tupla completa. El docente
+    /// solo puede pedir el grid de un paralelo de su propio distributivo
+    /// (validado por <c>DistributivoGuard</c>); el inspector, cualquiera.
+    /// </summary>
     [HttpGet("grid")]
     [ProducesResponseType(typeof(GridDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Grid(
@@ -35,7 +44,8 @@ public sealed class HorariosController : ControllerBase
         [FromQuery] int idModalidad, [FromQuery] string paralelo, [FromQuery] DateOnly lunes,
         CancellationToken ct) =>
         Ok(await _horarios.ObtenerGridAsync(
-            new ParaleloClaveDto(idPeriodo, idNivel, idSeccion, idModalidad, paralelo), lunes, ct));
+            new ParaleloClaveDto(idPeriodo, idNivel, idSeccion, idModalidad, paralelo), lunes,
+            IdProfesorSub, EsInspector, ct));
 
     [HttpPost("validar-conflicto")]
     [Authorize(Roles = "cplec_inspector")]

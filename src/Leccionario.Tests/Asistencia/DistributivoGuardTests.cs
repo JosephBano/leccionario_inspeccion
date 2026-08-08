@@ -232,4 +232,82 @@ public sealed class DistributivoGuardTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    // ---------------------------------------------------------------------
+    // EnsureDocenteTieneParaleloAsync (grid de horarios: recibe la 5-tupla,
+    // no idAsignacion)
+    // ---------------------------------------------------------------------
+
+    private const string Periodo = "TEST0001";
+    private const int Nivel = 35;
+    private const int Seccion = 1;
+    private const int Modalidad = 1;
+    private const string Paralelo = "A";
+
+    [TestMethod]
+    public async Task EnsureParalelo_DocenteDuenio_NoLanza()
+    {
+        using var db = CrearContexto(nameof(EnsureParalelo_DocenteDuenio_NoLanza));
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .DelProfesor(IdProfesorDuenio).ConNivel(Nivel).ConParalelo(Paralelo)
+            .Activo(1).EsActivaAsignacion(1).Build());
+        await db.SaveChangesAsync();
+
+        var act = async () => await CrearGuard(db).EnsureDocenteTieneParaleloAsync(
+            IdProfesorDuenio, Periodo, Nivel, Seccion, Modalidad, Paralelo, esInspector: false);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [TestMethod]
+    public async Task EnsureParalelo_DocenteAjeno_LanzaDistributivoAjeno()
+    {
+        using var db = CrearContexto(nameof(EnsureParalelo_DocenteAjeno_LanzaDistributivoAjeno));
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .DelProfesor(IdProfesorAjeno).ConNivel(Nivel).ConParalelo(Paralelo)
+            .Activo(1).EsActivaAsignacion(1).Build());
+        await db.SaveChangesAsync();
+
+        var act = async () => await CrearGuard(db).EnsureDocenteTieneParaleloAsync(
+            IdProfesorDuenio, Periodo, Nivel, Seccion, Modalidad, Paralelo, esInspector: false);
+
+        await act.Should().ThrowAsync<DistributivoAjenoException>();
+    }
+
+    [TestMethod]
+    public async Task EnsureParalelo_ParaleloConEspaciosSobrantes_ComparaConTrim()
+    {
+        using var db = CrearContexto(nameof(EnsureParalelo_ParaleloConEspaciosSobrantes_ComparaConTrim));
+        db.asignaciones_profesores.Add(new AsignacionBuilder()
+            .DelProfesor(IdProfesorDuenio).ConNivel(Nivel).ConParalelo(" A ")
+            .Activo(1).EsActivaAsignacion(1).Build());
+        await db.SaveChangesAsync();
+
+        var act = async () => await CrearGuard(db).EnsureDocenteTieneParaleloAsync(
+            IdProfesorDuenio, Periodo, Nivel, Seccion, Modalidad, Paralelo, esInspector: false);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [TestMethod]
+    public async Task EnsureParalelo_Inspector_NuncaConsultaBD()
+    {
+        using var db = CrearContexto(nameof(EnsureParalelo_Inspector_NuncaConsultaBD));
+
+        var act = async () => await CrearGuard(db).EnsureDocenteTieneParaleloAsync(
+            IdProfesorDuenio, Periodo, Nivel, Seccion, Modalidad, Paralelo, esInspector: true);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [TestMethod]
+    public async Task EnsureParalelo_IdProfesorVacio_LanzaUnauthorizedAccess()
+    {
+        using var db = CrearContexto(nameof(EnsureParalelo_IdProfesorVacio_LanzaUnauthorizedAccess));
+
+        var act = async () => await CrearGuard(db).EnsureDocenteTieneParaleloAsync(
+            "", Periodo, Nivel, Seccion, Modalidad, Paralelo, esInspector: false);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
 }

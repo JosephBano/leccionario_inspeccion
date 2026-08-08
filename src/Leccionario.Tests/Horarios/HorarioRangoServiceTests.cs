@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leccionario.Api.Application.Asistencia.Services;
 using Leccionario.Api.Application.Common.Exceptions;
 using Leccionario.Api.Application.Horarios;
 using Leccionario.Api.Application.Horarios.Services;
@@ -29,7 +30,8 @@ public sealed class HorarioRangoServiceTests
     {
         var franjaZ = new FranjaZGuard(db);
         var horarios = new HorarioService(db, new HorarioCarreraGuard(db), franjaZ,
-            new ConflictoHorarioService(db), new FranjaService(db, franjaZ), new EscrituraDirecta());
+            new ConflictoHorarioService(db), new FranjaService(db, franjaZ), new EscrituraDirecta(),
+            new DistributivoGuard(db));
         return new HorarioRangoService(db, horarios, new HorarioCarreraGuard(db), franjaZ);
     }
 

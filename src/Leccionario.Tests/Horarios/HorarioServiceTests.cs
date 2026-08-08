@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Leccionario.Api.Application.Asistencia.Services;
 using Leccionario.Api.Application.Common.Exceptions;
 using Leccionario.Api.Application.Horarios;
 using Leccionario.Api.Application.Horarios.Services;
@@ -17,6 +18,7 @@ public sealed class HorarioServiceTests
     private const int Asig100 = 100;
     private const int Z_0700 = 901;
     private const int Z_0800 = 902;
+    private const string Profesor = "0000000001";
     private static readonly DateOnly Lunes = new(2026, 8, 3);
 
     private static sigafi_esContext CrearContexto(string nombreDb) =>
@@ -27,9 +29,13 @@ public sealed class HorarioServiceTests
         new HorarioService(db,
             new HorarioCarreraGuard(db), new FranjaZGuard(db),
             new ConflictoHorarioService(db), new FranjaService(db, new FranjaZGuard(db)),
-            new EscrituraDirecta());
+            new EscrituraDirecta(), new DistributivoGuard(db));
 
     private static ParaleloClaveDto Clave => new("TEST0001", NivelC6, 1, 1, "A");
+
+    private static Task<GridDto> ObtenerGridComoDocenteAsync(
+        sigafi_esContext db, ParaleloClaveDto p, DateOnly lunes, string idProfesor = Profesor) =>
+        Crear(db).ObtenerGridAsync(p, lunes, idProfesor, esInspector: false);
 
     private static async Task SembrarAsync(sigafi_esContext db, bool calendarioCompleto = true)
     {
@@ -64,7 +70,7 @@ public sealed class HorarioServiceTests
         using var db = CrearContexto(nameof(Grid_SinCeldas_DevuelveFranjasYSieteDias));
         await SembrarAsync(db);
 
-        var g = await Crear(db).ObtenerGridAsync(Clave, Lunes);
+        var g = await ObtenerGridComoDocenteAsync(db, Clave, Lunes);
 
         g.Franjas.Should().HaveCount(2);
         g.Dias.Should().HaveCount(7);
@@ -78,7 +84,7 @@ public sealed class HorarioServiceTests
         using var db = CrearContexto(nameof(Grid_ConDiaAusenteDelCalendario_LoMarcaDeshabilitadoConMotivo));
         await SembrarAsync(db, calendarioCompleto: false);
 
-        var g = await Crear(db).ObtenerGridAsync(Clave, Lunes);
+        var g = await ObtenerGridComoDocenteAsync(db, Clave, Lunes);
 
         var domingo = g.Dias.Single(d => d.Dia == "Domingo");
         domingo.Habilitado.Should().BeFalse();
@@ -95,12 +101,45 @@ public sealed class HorarioServiceTests
             .DeAsignacion(Asig100).EnFecha(500).EnFranja(Z_0700).Build());
         await db.SaveChangesAsync();
 
-        var g = await Crear(db).ObtenerGridAsync(Clave, Lunes);
+        var g = await ObtenerGridComoDocenteAsync(db, Clave, Lunes);
 
         var c = g.Celdas.Should().ContainSingle().Which;
         c.Idhora.Should().Be(Z_0700);
         c.Dia.Should().Be("Lunes");
         c.NombreDocente.Should().Contain("PEREZ");
+    }
+
+    [TestMethod]
+    public async Task Grid_DocenteAjenoAlParalelo_LanzaDistributivoAjeno()
+    {
+        using var db = CrearContexto(nameof(Grid_DocenteAjenoAlParalelo_LanzaDistributivoAjeno));
+        await SembrarAsync(db);
+
+        var acto = async () => await ObtenerGridComoDocenteAsync(db, Clave, Lunes, idProfesor: "9999999999");
+
+        await acto.Should().ThrowAsync<DistributivoAjenoException>();
+    }
+
+    [TestMethod]
+    public async Task Grid_Inspector_VeCualquierParaleloSinAsignacionPropia()
+    {
+        using var db = CrearContexto(nameof(Grid_Inspector_VeCualquierParaleloSinAsignacionPropia));
+        await SembrarAsync(db);
+
+        var g = await Crear(db).ObtenerGridAsync(Clave, Lunes, idProfesorDocente: null, esInspector: true);
+
+        g.Franjas.Should().HaveCount(2);
+    }
+
+    [TestMethod]
+    public async Task Grid_SinProfesorYSinSerInspector_LanzaUnauthorized()
+    {
+        using var db = CrearContexto(nameof(Grid_SinProfesorYSinSerInspector_LanzaUnauthorized));
+        await SembrarAsync(db);
+
+        var acto = async () => await Crear(db).ObtenerGridAsync(Clave, Lunes, idProfesorDocente: null, esInspector: false);
+
+        await acto.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 
     [TestMethod]

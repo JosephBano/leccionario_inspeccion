@@ -63,4 +63,27 @@ public interface IDistributivoGuard
         int idAsignacion,
         bool esInspector,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Igual que <see cref="EnsureDocenteTieneAsignacionAsync"/> pero para
+    /// endpoints que reciben la 5-tupla del paralelo en vez de
+    /// <c>idAsignacion</c> (p. ej. el grid de horarios). Mismo filtro
+    /// canónico de vigencia, comparando <c>paralelo</c> con <c>TRIM()</c>.
+    /// </summary>
+    /// <exception cref="Leccionario.Api.Application.Common.Exceptions.DistributivoAjenoException">
+    /// Cuando <paramref name="esInspector"/> es <c>false</c> y el docente no
+    /// tiene una asignación vigente en ese paralelo.
+    /// </exception>
+    /// <exception cref="UnauthorizedAccessException">
+    /// Si <paramref name="idProfesor"/> es nulo o vacío.
+    /// </exception>
+    Task EnsureDocenteTieneParaleloAsync(
+        string idProfesor,
+        string idPeriodo,
+        int idNivel,
+        int idSeccion,
+        int idModalidad,
+        string paralelo,
+        bool esInspector,
+        CancellationToken ct = default);
 }
