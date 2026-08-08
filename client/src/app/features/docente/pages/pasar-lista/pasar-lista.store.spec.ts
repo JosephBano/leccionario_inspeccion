@@ -34,7 +34,7 @@ describe('PasarListaStore', () => {
   });
 
   function cargarYPoblar() {
-    store.cargar(23229, '2026-08-07', 'Clase del día');
+    store.cargar(23229, 77, 'Clase del día');
     const alumnosReq = httpMock.expectOne(`${environment.apiUrl}/paralelos/23229/alumnos`);
     alumnosReq.flush([
       { idMatricula: 1, idAlumno: 'a1', apellidos: 'APELLIDO A', nombres: 'NOMBRE A', retirado: false, esOyente: false },
@@ -42,6 +42,7 @@ describe('PasarListaStore', () => {
       { idMatricula: 3, idAlumno: 'a3', apellidos: 'APELLIDO C', nombres: 'NOMBRE C', retirado: true,  esOyente: false }, // retirado
     ]);
     const sesionReq = httpMock.expectOne(`${environment.apiUrl}/paralelos/23229/sesiones`);
+    expect(sesionReq.request.body).toEqual({ tema: 'Clase del día', idHorarioInicio: 77 });
     sesionReq.flush({
       idSesion: 9001,
       idAsignacion: 23229,
@@ -153,5 +154,14 @@ describe('PasarListaStore', () => {
     const m1 = store.marcas().find((m) => m.idMatricula === 1)!;
     expect(m1.estado).toBe(EstadoAsistencia.Ausente);
     expect(m1.modificado).toBe(false);
+  });
+
+  it('muestra un mensaje propio cuando el backend responde SIN_HORARIO', () => {
+    store.cargar(100, 77, 'Clase');
+    httpMock.expectOne((r) => r.url.includes('/paralelos/100/alumnos')).flush([]);
+    httpMock.expectOne((r) => r.url.includes('/paralelos/100/sesiones'))
+      .flush({ codigo: 'SIN_HORARIO', mensaje: 'x' }, { status: 422, statusText: 'Unprocessable' });
+
+    expect(store.errorGuardar()).toContain('no tiene horario planificado');
   });
 });

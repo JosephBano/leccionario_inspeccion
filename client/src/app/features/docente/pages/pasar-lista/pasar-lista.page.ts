@@ -5,8 +5,8 @@ import {
   effect,
   inject,
   input,
-  signal,
 } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,6 +42,7 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
   imports: [
     FormsModule,
     DatePipe,
+    RouterLink,
     MatButtonModule,
     MatCardModule,
     MatChipsModule,
@@ -51,16 +52,18 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
   ],
   template: `
     <header class="page-header">
-      <a mat-button routerLink="/mis-paralelos">
+      <a mat-button routerLink="/mi-horario">
         <mat-icon>arrow_back</mat-icon>
-        Mis paralelos
+        Mi horario
       </a>
       <h1>Pasar lista</h1>
-      <p class="fecha">{{ fechaHoy() }}</p>
+      @if (store.sesion(); as s) {
+        <p class="fecha">{{ s.fecha }}</p>
+      }
     </header>
 
     @if (!store.sesion()) {
-      <p class="loading">Abriendo la sesión del día…</p>
+      <p class="loading">Abriendo la sesión de esta clase…</p>
     } @else {
       <section class="resumen">
         <mat-chip-set>
@@ -235,19 +238,27 @@ const ESTADOS_BADGE: readonly EstadoBadge[] = [
 })
 export class PasarListaPage {
   protected readonly idAsignacion = input.required<number>();
+  protected readonly idHorarioInicio = input<number | null>(null);
   protected readonly store = inject(PasarListaStore);
   private readonly snack = inject(MatSnackBar);
+  private readonly router = inject(Router);
 
   protected readonly estados = TODOS_ESTADOS;
-  protected readonly fechaHoy = signal(this.hoyISO());
 
   constructor() {
-    // Carga al estar listo el idAsignacion.
     effect(() => {
       const id = this.idAsignacion();
-      if (id) {
-        this.store.cargar(id, this.fechaHoy(), 'Clase del día');
+      const bloque = this.idHorarioInicio();
+      if (!id) return;
+
+      // Sin bloque no hay asistencia: se vuelve a la agenda a elegirlo.
+      if (bloque === null || bloque === undefined || Number.isNaN(Number(bloque))) {
+        this.snack.open('Elige el bloque de clase para pasar lista.', 'OK', { duration: 4000 });
+        void this.router.navigate(['/paralelos', id, 'agenda']);
+        return;
       }
+
+      this.store.cargar(id, Number(bloque), 'Clase del día');
     });
   }
 
@@ -286,13 +297,5 @@ export class PasarListaPage {
       event.preventDefault();
       event.returnValue = '';
     }
-  }
-
-  private hoyISO(): string {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
   }
 }

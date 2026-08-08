@@ -74,8 +74,10 @@ export interface RegistrarAsistenciaRequest {
 }
 
 export interface CrearSesionRequest {
-  fecha: string;
+  /** @deprecated El backend ancla la sesión al horario. Usar idHorarioInicio. */
+  fecha?: string;
   tema: string;
   observacion?: string | null;
   numeroBloque?: number;
+  idHorarioInicio?: number | null;
 }

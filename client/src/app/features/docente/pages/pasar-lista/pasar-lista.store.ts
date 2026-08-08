@@ -77,9 +77,12 @@ export class PasarListaStore {
 
   /**
    * Carga inicial: pide la nómina y, si ya hay sesión persistida para el día
-   * actual, precarga sus marcas. Si no, crea una sesión idempotente.
+  /**
+   * Carga inicial: pide la nómina y abre (o recupera) la sesión del bloque de
+   * horario indicado. `idHorarioInicio` es obligatorio: sin bloque no hay
+   * asistencia (spec 2026-08-08 §D2).
    */
-  cargar(idAsignacion: number, fecha: string, temaInicial: string): void {
+  cargar(idAsignacion: number, idHorarioInicio: number, temaInicial: string): void {
     this._idAsignacion.set(idAsignacion);
     this._errorGuardar.set(null);
 
@@ -103,11 +106,24 @@ export class PasarListaStore {
 
           // Crea (o recupera) la sesión del día. Es idempotente en el backend.
           this.asistencia
-            .crearSesion(idAsignacion, { fecha, tema: temaInicial })
+            .crearSesion(idAsignacion, { tema: temaInicial, idHorarioInicio })
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (sesion) => this.aplicarSesion(sesion),
-              error: () => this._errorGuardar.set('No se pudo abrir la sesión del día.'),
+              error: (err) => {
+                const code = err?.error?.codigo || err?.error?.code;
+                if (code === 'SIN_HORARIO') {
+                  this._errorGuardar.set(
+                    'Este paralelo no tiene horario planificado. Pide al inspector que lo cargue.',
+                  );
+                } else if (code === 'HORARIO_REQUERIDO') {
+                  this._errorGuardar.set(
+                    'Se requiere seleccionar un bloque de horario planificado para este paralelo.',
+                  );
+                } else {
+                  this._errorGuardar.set('No se pudo abrir la sesión de esta clase.');
+                }
+              },
             });
         },
         error: () => this._errorGuardar.set('No se pudo cargar la nómina del paralelo.'),
