@@ -86,6 +86,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<ISesionService, SesionService>();
         services.AddScoped<IAsistenciaService, AsistenciaService>();
         services.AddScoped<IHorarioCarreraGuard, HorarioCarreraGuard>();
+        services.AddScoped<IFranjaZGuard, FranjaZGuard>();
 
         return services;
     }
