@@ -94,6 +94,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IHorarioService, HorarioService>();
         services.AddScoped<IHorarioRangoService, HorarioRangoService>();
         services.AddScoped<IAgendaService, AgendaService>();
+        services.AddScoped<IMiHorarioService, MiHorarioService>();
 
         return services;
     }
