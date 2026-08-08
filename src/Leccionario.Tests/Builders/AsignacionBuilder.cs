@@ -29,6 +29,13 @@ public sealed class AsignacionBuilder
     public AsignacionBuilder ConId(int idAsignacion)
     {
         _idAsignacion = idAsignacion;
+        _idAsignatura = idAsignacion;
+        return this;
+    }
+
+    public AsignacionBuilder ConAsignatura(int idAsignatura)
+    {
+        _idAsignatura = idAsignatura;
         return this;
     }
 
