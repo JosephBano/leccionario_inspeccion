@@ -5,6 +5,7 @@ using Leccionario.Api.Application.Asistencia.Services;
 using Leccionario.Api.Application.Auth.Authorization;
 using Leccionario.Api.Application.Authenticacion.Auth;
 using Leccionario.Api.Application.Distributivo;
+using Leccionario.Api.Application.Horarios.Services;
 using Leccionario.Api.Infrastructure.DbContexts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -84,6 +85,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<INominaAlumnosService, NominaAlumnosService>();
         services.AddScoped<ISesionService, SesionService>();
         services.AddScoped<IAsistenciaService, AsistenciaService>();
+        services.AddScoped<IHorarioCarreraGuard, HorarioCarreraGuard>();
 
         return services;
     }
