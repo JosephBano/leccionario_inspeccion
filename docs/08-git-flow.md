@@ -17,7 +17,7 @@ Ramas personales activas:
 
 | Rama | Dispositivo / persona |
 |---|---|
-| `dv_jb` | Andrés (este equipo) |
+| `dev_jb` | Andrés (este equipo) |
 
 Cada persona que se sume crea la suya (`dv_ml`, `dv_ac`, …) y la agrega a esta tabla en
 su primer PR.
@@ -27,7 +27,7 @@ main ──────●──────────────────
             \                  /
 develop ─────●────●────●──────●───────────────▶  (integración)
               \    \    \
-               dv_jb  feature/reportes-excel
+               dev_jb  feature/reportes-excel
 ```
 
 ---
@@ -37,7 +37,7 @@ develop ─────●────●────●──────●─
 ```bash
 # 1. Partir siempre de develop actualizado
 git checkout develop && git pull origin develop
-git checkout dv_jb && git rebase develop
+git checkout dev_jb && git rebase develop
 
 # 2. Trabajar y commitear
 git add -p
@@ -47,10 +47,10 @@ git commit -m "feat(asistencia): registrar lista por sesion"
 cd Backend && dotnet test && cd ../Frontend && npm test
 
 # 4. Subir y abrir PR hacia develop
-git push origin dv_jb
+git push origin dev_jb
 ```
 
-**`dv_jb` se rebasea sobre `develop`, no se mergea desde `develop`.** Mantiene el
+**`dev_jb` se rebasea sobre `develop`, no se mergea desde `develop`.** Mantiene el
 historial lineal y hace los PR legibles.
 
 ---

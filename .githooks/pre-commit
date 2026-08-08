@@ -27,7 +27,7 @@ rama=$(git rev-parse --abbrev-ref HEAD)
 if [[ "$rama" == "main" || "$rama" == "develop" ]]; then
     err "Commit directo sobre '$rama' — rama protegida."
     echo "  Los cambios entran por Pull Request desde una rama personal:"
-    echo "    git checkout dv_jb"
+    echo "    git checkout dev_jb"
     echo "  Ver docs/08-git-flow.md"
     exit 1
 fi
