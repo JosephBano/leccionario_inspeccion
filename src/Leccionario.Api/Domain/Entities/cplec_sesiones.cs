@@ -2,6 +2,7 @@
 #pragma warning disable CS8981
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Leccionario.Api.Domain.Entities;
 
@@ -27,10 +28,13 @@ public partial class cplec_sesiones
     /// </summary>
     public sbyte numeroBloque { get; set; }
 
+    [NotMapped]
     public int? idHorarioInicio { get; set; }
 
+    [NotMapped]
     public sbyte? franjasPlanificadas { get; set; }
 
+    [NotMapped]
     public short? minutosPlanificados { get; set; }
 
     /// <summary>
@@ -50,9 +54,21 @@ public partial class cplec_sesiones
 
     public DateTime? fechaCierre { get; set; }
 
-    public bool esTardia { get; set; }
+    public bool? _esTardia;
+    [NotMapped]
+    public bool esTardia
+    {
+        get => _esTardia ?? (_diasRetraso.HasValue ? _diasRetraso.Value > 0 : (idFechaNavigation?.fecha != null && Math.Max(0, DateOnly.FromDateTime(fechaCreacion).DayNumber - idFechaNavigation.fecha.Value.DayNumber) > 0));
+        set => _esTardia = value;
+    }
 
-    public short diasRetraso { get; set; }
+    public short? _diasRetraso;
+    [NotMapped]
+    public short diasRetraso
+    {
+        get => _diasRetraso ?? (idFechaNavigation?.fecha != null ? (short)Math.Max(0, DateOnly.FromDateTime(fechaCreacion).DayNumber - idFechaNavigation.fecha.Value.DayNumber) : (short)0);
+        set => _diasRetraso = value;
+    }
 
     public bool? activo { get; set; }
 
@@ -73,5 +89,6 @@ public partial class cplec_sesiones
 
     public virtual fechas_horarios idFechaNavigation { get; set; } = null!;
 
+    [NotMapped]
     public virtual horario_detalle? idHorarioInicioNavigation { get; set; }
 }

@@ -118,20 +118,37 @@ public sealed class AgendaService : IAgendaService
     }
 
     public async Task<IReadOnlyList<SesionTardiaDto>> SesionesTardiasAsync(
-        DateOnly desde, DateOnly hasta, CancellationToken ct = default) =>
-        await (from s in _db.cplec_sesiones.AsNoTracking()
-               join f in _db.fechas_horarios.AsNoTracking() on s.idFecha equals f.idFecha
-               join ap in _db.asignaciones_profesores.AsNoTracking() on s.idAsignacion equals ap.idAsignacion
-               join pr in _db.profesores.AsNoTracking() on ap.idProfesor equals pr.idProfesor into prJoin
-               from pr in prJoin.DefaultIfEmpty()
-               where s.activo == true && s.esTardia
-                     && f.fecha != null && f.fecha >= desde && f.fecha <= hasta
-               orderby s.diasRetraso descending, f.fecha
-               select new SesionTardiaDto(
-                   s.idSesion, s.idAsignacion, f.fecha!.Value,
-                   pr == null ? null : (pr.apellidos + " " + pr.nombres).Trim(),
-                   s.tema, s.diasRetraso))
+        DateOnly desde, DateOnly hasta, CancellationToken ct = default)
+    {
+        var raw = await (from s in _db.cplec_sesiones.AsNoTracking()
+                         join f in _db.fechas_horarios.AsNoTracking() on s.idFecha equals f.idFecha
+                         join ap in _db.asignaciones_profesores.AsNoTracking() on s.idAsignacion equals ap.idAsignacion
+                         join pr in _db.profesores.AsNoTracking() on ap.idProfesor equals pr.idProfesor into prJoin
+                         from pr in prJoin.DefaultIfEmpty()
+                         where s.activo == true
+                               && f.fecha != null && f.fecha >= desde && f.fecha <= hasta
+                         select new
+                         {
+                             s,
+                             Fecha = f.fecha!.Value,
+                             NombreDocente = pr == null ? null : (pr.apellidos + " " + pr.nombres).Trim()
+                         })
             .ToListAsync(ct);
+
+        return raw
+            .Select(x =>
+            {
+                var diasRetraso = x.s._diasRetraso ?? Math.Max(0, DateOnly.FromDateTime(x.s.fechaCreacion).DayNumber - x.Fecha.DayNumber);
+                var esTardia = x.s._esTardia ?? (diasRetraso > 0);
+                return new { x.s, x.Fecha, x.NombreDocente, DiasRetraso = diasRetraso, EsTardia = esTardia };
+            })
+            .Where(x => x.EsTardia)
+            .OrderByDescending(x => x.DiasRetraso)
+            .ThenBy(x => x.Fecha)
+            .Select(x => new SesionTardiaDto(
+                x.s.idSesion, x.s.idAsignacion, x.Fecha, x.NombreDocente, x.s.tema, x.DiasRetraso))
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<DiaSinRegistrarDto>> DiasSinRegistrarAsync(
         DateOnly desde, DateOnly hasta, CancellationToken ct = default)
