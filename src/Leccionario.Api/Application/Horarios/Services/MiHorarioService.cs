@@ -53,11 +53,10 @@ public sealed class MiHorarioService : IMiHorarioService
             throw new UnauthorizedAccessException("No se puede determinar el docente autenticado.");
 
         var (inicio, fin) = ResolverRango(desde, hasta);
-        var hoy = DateOnly.FromDateTime(_reloj.GetUtcNow().LocalDateTime);
 
         // Vigencia: ventana fecha_inicial..fecha_fin + 15 días de gracia. No se
         // usa periodos.activo, que está en 1 hasta en periodos de 2022.
-        var paralelos = await _misParalelos.ResolverAsync(idProfesor, idPeriodo: null, fechaReferencia: hoy, ct);
+        var paralelos = await _misParalelos.ResolverAsync(idProfesor, idPeriodo: null, fechaReferencia: inicio, ct);
         if (paralelos.Count == 0)
             return Array.Empty<BloqueMiHorarioDto>();
 
