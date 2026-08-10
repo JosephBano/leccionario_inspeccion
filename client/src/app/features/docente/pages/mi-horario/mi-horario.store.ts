@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { MiHorarioService } from '@features/docente/services/mi-horario.service';
 import type { BloqueMiHorario } from '@features/docente/models/mi-horario.model';
+import { lunesDe, sumarDiasISO } from '@core/utils/fechas';
 
 /** Una franja horaria con sus siete celdas (cada una con su lista de bloques), de lunes a domingo. */
 export interface FilaHorario {
@@ -9,32 +10,11 @@ export interface FilaHorario {
   readonly celdas: readonly BloqueMiHorario[][];
 }
 
-/** Lunes de la semana que contiene `fechaISO`, en formato ISO. */
-export function lunesDe(fechaISO: string): string {
-  const d = new Date(`${fechaISO}T00:00:00`);
-  const diaLunes0 = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - diaLunes0);
-  return aISO(d);
-}
-
-function aISO(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function sumarDias(fechaISO: string, dias: number): string {
-  const d = new Date(`${fechaISO}T00:00:00`);
-  d.setDate(d.getDate() + dias);
-  return aISO(d);
-}
-
 @Injectable()
 export class MiHorarioStore {
   private readonly api = inject(MiHorarioService);
 
-  private readonly _lunes = signal<string>(lunesDe(aISO(new Date())));
+  private readonly _lunes = signal<string>(lunesDe(new Date()));
   private readonly _bloques = signal<BloqueMiHorario[]>([]);
   private readonly _cargando = signal(false);
   private readonly _error = signal<string | null>(null);
@@ -44,11 +24,11 @@ export class MiHorarioStore {
   readonly cargando = this._cargando.asReadonly();
   readonly error = this._error.asReadonly();
 
-  readonly domingo = computed(() => sumarDias(this._lunes(), 6));
+  readonly domingo = computed(() => sumarDiasISO(this._lunes(), 6));
 
   /** Los siete días de la semana mostrada, en ISO. */
   readonly dias = computed(() =>
-    Array.from({ length: 7 }, (_, i) => sumarDias(this._lunes(), i)),
+    Array.from({ length: 7 }, (_, i) => sumarDiasISO(this._lunes(), i)),
   );
 
   /** Bloques agrupados: una fila por franja distinta, una columna por día. */
@@ -79,11 +59,11 @@ export class MiHorarioStore {
   }
 
   irAEstaSemana(): void {
-    this.irASemanaDe(aISO(new Date()));
+    this.irASemanaDe(lunesDe(new Date()));
   }
 
   cambiarSemana(deltaSemanas: number): void {
-    this._lunes.set(sumarDias(this._lunes(), deltaSemanas * 7));
+    this._lunes.set(sumarDiasISO(this._lunes(), deltaSemanas * 7));
     this.cargar();
   }
 

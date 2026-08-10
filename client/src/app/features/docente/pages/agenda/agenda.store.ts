@@ -4,14 +4,8 @@ import type { BloqueAgendaDto } from '../../models/agenda.model';
 import { HorariosService } from '@features/inspector/services/horarios.service';
 import type { GridDto} from '@features/inspector/models/horario.model';
 import { obtenerMensajeError } from '@features/inspector/models/horario.model';
-import { getMondayOf } from '@features/inspector/pages/horarios/horarios.store';
+import { lunesDe, domingoDe, sumarDiasISO } from '@core/utils/fechas';
 import type { ParaleloClave } from '@shared/paralelo-selector/paralelo-selector';
-
-function getSundayOf(lunesStr: string): string {
-  const d = new Date(lunesStr);
-  d.setDate(d.getDate() + 6);
-  return d.toISOString().split('T')[0];
-}
 
 @Injectable()
 export class AgendaStore {
@@ -20,7 +14,7 @@ export class AgendaStore {
 
   private readonly _idAsignacion = signal<number | null>(null);
   private readonly _clave = signal<ParaleloClave | null>(null);
-  private readonly _lunes = signal<string>(getMondayOf(new Date()));
+  private readonly _lunes = signal<string>(lunesDe(new Date()));
   private readonly _bloques = signal<BloqueAgendaDto[]>([]);
   private readonly _grid = signal<GridDto | null>(null);
   private readonly _cargando = signal<boolean>(false);
@@ -42,9 +36,7 @@ export class AgendaStore {
   }
 
   cambiarSemana(deltaSemanas: number): void {
-    const cur = new Date(this._lunes());
-    cur.setDate(cur.getDate() + deltaSemanas * 7);
-    this._lunes.set(getMondayOf(cur));
+    this._lunes.set(sumarDiasISO(this._lunes(), deltaSemanas * 7));
     this.cargarAgendaYGrid();
   }
 
@@ -53,7 +45,7 @@ export class AgendaStore {
     if (!idAsig) return;
 
     const lunesStr = this._lunes();
-    const domingoStr = getSundayOf(lunesStr);
+    const domingoStr = domingoDe(lunesStr);
 
     this._cargando.set(true);
     this._error.set(null);

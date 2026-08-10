@@ -14,16 +14,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ReportesService } from '../../services/reportes.service';
 import type { SesionTardiaDto, DiaSinRegistrarDto} from '../../models/horario.model';
 import { obtenerMensajeError } from '../../models/horario.model';
-
-function getFechaHaceDias(dias: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - dias);
-  return d.toISOString().split('T')[0];
-}
-
-function getFechaHoy(): string {
-  return new Date().toISOString().split('T')[0];
-}
+import { hoyEnISO, haceDiasISO } from '@core/utils/fechas';
 
 @Component({
   selector: 'app-reportes-page',
@@ -231,8 +222,8 @@ export class ReportesPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  protected desde: string = getFechaHaceDias(30);
-  protected hasta: string = getFechaHoy();
+  protected desde: string = haceDiasISO(30);
+  protected hasta: string = hoyEnISO();
 
   protected readonly tardias = signal<SesionTardiaDto[]>([]);
   protected readonly sinRegistrar = signal<DiaSinRegistrarDto[]>([]);
