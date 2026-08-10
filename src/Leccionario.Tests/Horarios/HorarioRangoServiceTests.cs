@@ -29,7 +29,7 @@ public sealed class HorarioRangoServiceTests
     private static IHorarioRangoService Crear(sigafi_esContext db)
     {
         var franjaZ = new FranjaZGuard(db);
-        var horarios = new HorarioService(db, new HorarioCarreraGuard(db), franjaZ,
+        var horarios = new HorarioService(db, new HorarioCarreraGuard(db), franjaZ, new LunesGuard(),
             new ConflictoHorarioService(db), new FranjaService(db, franjaZ), new EscrituraDirecta(),
             new DistributivoGuard(db));
         return new HorarioRangoService(db, horarios, new HorarioCarreraGuard(db), franjaZ);

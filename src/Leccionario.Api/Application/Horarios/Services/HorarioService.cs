@@ -37,6 +37,7 @@ public sealed class HorarioService : IHorarioService
     private readonly sigafi_esContext _db;
     private readonly IHorarioCarreraGuard _carrera;
     private readonly IFranjaZGuard _franjaZ;
+    private readonly ILunesGuard _lunes;
     private readonly IConflictoHorarioService _conflictos;
     private readonly IFranjaService _franjas;
     private readonly IEscrituraSerializable _escritura;
@@ -46,6 +47,7 @@ public sealed class HorarioService : IHorarioService
         sigafi_esContext db,
         IHorarioCarreraGuard carrera,
         IFranjaZGuard franjaZ,
+        ILunesGuard lunes,
         IConflictoHorarioService conflictos,
         IFranjaService franjas,
         IEscrituraSerializable escritura,
@@ -54,6 +56,7 @@ public sealed class HorarioService : IHorarioService
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _carrera = carrera ?? throw new ArgumentNullException(nameof(carrera));
         _franjaZ = franjaZ ?? throw new ArgumentNullException(nameof(franjaZ));
+        _lunes = lunes ?? throw new ArgumentNullException(nameof(lunes));
         _conflictos = conflictos ?? throw new ArgumentNullException(nameof(conflictos));
         _franjas = franjas ?? throw new ArgumentNullException(nameof(franjas));
         _escritura = escritura ?? throw new ArgumentNullException(nameof(escritura));
@@ -66,6 +69,11 @@ public sealed class HorarioService : IHorarioService
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(p);
+
+        // Defensa aguas arriba: si el frontend (helper de fechas calendario,
+        // ADR-009) vuelve a fallar por zona horaria, no devolvemos un grid
+        // con etiquetas desalineadas — devolvemos 400 VALIDACION.
+        _lunes.EnsureEsLunes(lunes);
 
         if (!esInspector && string.IsNullOrWhiteSpace(idProfesorDocente))
             throw new UnauthorizedAccessException("No se puede determinar el docente autenticado.");
