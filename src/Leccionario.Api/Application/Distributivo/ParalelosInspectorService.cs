@@ -63,11 +63,16 @@ public sealed class ParalelosInspectorService : IParalelosInspectorService
         var filas = await (
             from ap in _db.asignaciones_profesores.AsNoTracking()
             join cu in _db.cursos.AsNoTracking() on ap.idNivel equals cu.idNivel
+            join p in _db.periodos.AsNoTracking() on ap.idPeriodo equals p.idPeriodo into pJoin
+            from p in pJoin.DefaultIfEmpty()
             where cu.idCarrera == IdCarreraConduccion
                   && (idPeriodo == null || ap.idPeriodo == idPeriodo)
                   && (!soloVigentes
+                      || idPeriodo != null
                       || (ap.fecha_inicial != null && ap.fecha_fin != null
-                          && ap.fecha_inicial <= hoy && hoy <= ap.fecha_fin))
+                          && ap.fecha_inicial <= hoy && hoy <= ap.fecha_fin)
+                      || (p != null && p.fecha_inicial != null && p.fecha_final != null
+                          && p.fecha_inicial <= hoy && hoy <= p.fecha_final))
             select new
             {
                 ap.idPeriodo, ap.idNivel, ap.idSeccion, ap.idModalidad, ap.paralelo, cu.Nivel

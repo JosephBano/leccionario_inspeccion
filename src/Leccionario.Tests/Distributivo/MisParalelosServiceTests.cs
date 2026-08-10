@@ -88,4 +88,34 @@ public sealed class MisParalelosServiceTests
 
         items.Should().BeEmpty();
     }
+
+    [TestMethod]
+    public async Task Resolver_ModuloTerminadoHace16Dias_PeroPeriodoVigente_SeIncluye()
+    {
+        using var db = CrearContexto(nameof(Resolver_ModuloTerminadoHace16Dias_PeroPeriodoVigente_SeIncluye));
+        SembrarAsignacion(db, new DateOnly(2026, 6, 25), Hoy.AddDays(-17));
+        db.periodos.Add(new periodos
+        {
+            idPeriodo = "TEST0001",
+            fecha_inicial = new DateOnly(2026, 3, 16),
+            fecha_final = new DateOnly(2026, 9, 30)
+        });
+        await db.SaveChangesAsync();
+
+        var items = await new MisParalelosService(db).ResolverAsync("0000000001", null, Hoy);
+
+        items.Should().HaveCount(1);
+    }
+
+    [TestMethod]
+    public async Task Resolver_IdPeriodoExplicito_BypassaFiltroVencimiento()
+    {
+        using var db = CrearContexto(nameof(Resolver_IdPeriodoExplicito_BypassaFiltroVencimiento));
+        SembrarAsignacion(db, new DateOnly(2026, 1, 1), Hoy.AddDays(-30));
+        await db.SaveChangesAsync();
+
+        var items = await new MisParalelosService(db).ResolverAsync("0000000001", "TEST0001", Hoy);
+
+        items.Should().HaveCount(1);
+    }
 }

@@ -91,7 +91,9 @@ public sealed class PeriodosPorNivelService : IPeriodosPorNivelService
                 ap.idNivel,
                 ap.idPeriodo,
                 Nivel = _db.cursos.Where(c => c.idNivel == ap.idNivel).Select(c => c.Nivel).FirstOrDefault(),
-                Detalle = _db.periodos.Where(p => p.idPeriodo == ap.idPeriodo).Select(p => p.detalle).FirstOrDefault()
+                Detalle = _db.periodos.Where(p => p.idPeriodo == ap.idPeriodo).Select(p => p.detalle).FirstOrDefault(),
+                PeriodoFechaInicial = _db.periodos.Where(p => p.idPeriodo == ap.idPeriodo).Select(p => p.fecha_inicial).FirstOrDefault(),
+                PeriodoFechaFinal = _db.periodos.Where(p => p.idPeriodo == ap.idPeriodo).Select(p => p.fecha_final).FirstOrDefault()
             })
             .Select(g => new
             {
@@ -99,8 +101,8 @@ public sealed class PeriodosPorNivelService : IPeriodosPorNivelService
                 g.Key.idPeriodo,
                 g.Key.Nivel,
                 g.Key.Detalle,
-                FechaInicial = g.Min(ap => ap.fecha_inicial),
-                FechaFin = g.Max(ap => ap.fecha_fin),
+                FechaInicial = g.Key.PeriodoFechaInicial ?? g.Min(ap => ap.fecha_inicial),
+                FechaFin = g.Key.PeriodoFechaFinal ?? g.Max(ap => ap.fecha_fin),
                 Asignaciones = g.Count(),
                 Docentes = g.Select(ap => ap.idProfesor).Distinct().Count()
             })

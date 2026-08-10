@@ -61,6 +61,8 @@ public sealed class MisParalelosService : IMisParalelosService
             join a  in _db.asignaturas.AsNoTracking() on ap.idAsignatura equals a.idAsignatura
             join s  in _db.secciones.AsNoTracking() on ap.idSeccion equals s.idSeccion
             join mo in _db.modalidades.AsNoTracking() on ap.idModalidad equals mo.idModalidad
+            join p  in _db.periodos.AsNoTracking() on ap.idPeriodo equals p.idPeriodo into pJoin
+            from p in pJoin.DefaultIfEmpty()
             where ap.idProfesor == idProfesor
                   && c.idCarrera == CarreraConduccion
                   && (ap.activo == null || ap.activo == 1)
@@ -81,12 +83,19 @@ public sealed class MisParalelosService : IMisParalelosService
                 s.seccion ?? string.Empty,
                 mo.modalidad ?? string.Empty,
                 ap.fecha_inicial,
-                ap.fecha_fin)
+                ap.fecha_fin,
+                p == null ? null : p.fecha_final)
         ).ToListAsync(ct);
 
         asignaciones = asignaciones
-            .Where(a => (a.fecha_inicial is null || referencia >= a.fecha_inicial.Value)
-                && (a.fecha_fin is null || referencia <= a.fecha_fin.Value.AddDays(DiasGracia)))
+            .Where(a => idPeriodo != null || (
+                (a.fecha_inicial is null || referencia >= a.fecha_inicial.Value)
+                && (
+                    a.fecha_fin is null
+                    || (a.periodo_fecha_final.HasValue && referencia <= a.periodo_fecha_final.Value)
+                    || referencia <= a.fecha_fin.Value.AddDays(DiasGracia)
+                )
+            ))
             .ToList();
 
         if (asignaciones.Count == 0)
@@ -200,5 +209,6 @@ public sealed class MisParalelosService : IMisParalelosService
         string Jornada,
         string Modalidad,
         DateOnly? fecha_inicial,
-        DateOnly? fecha_fin);
+        DateOnly? fecha_fin,
+        DateOnly? periodo_fecha_final);
 }
