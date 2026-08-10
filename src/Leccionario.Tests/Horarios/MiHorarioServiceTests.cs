@@ -124,7 +124,7 @@ public sealed class MiHorarioServiceTests
     public async Task Obtener_ExcluyeAsignacionVencidaMasDeLaGracia()
     {
         using var db = CrearContexto(nameof(Obtener_ExcluyeAsignacionVencidaMasDeLaGracia));
-        // Terminó el 2026-06-01: más de 15 días antes del reloj (2026-08-05).
+        // Terminó el 2026-06-01: más de 15 días antes del inicio del rango (2026-08-03).
         await SembrarAsync(db, finAsig100: new DateOnly(2026, 6, 1));
 
         var r = await Crear(db).ObtenerAsync(Duenio, Lunes, Domingo);
@@ -166,16 +166,42 @@ public sealed class MiHorarioServiceTests
     public async Task Obtener_AsignacionIniciaAMitadDeSemana_IncluyeBloquesDeEsaSemana()
     {
         using var db = CrearContexto(nameof(Obtener_AsignacionIniciaAMitadDeSemana_IncluyeBloquesDeEsaSemana));
-        // Asignación arranca el miércoles 2026-08-05. Hoy es 2026-08-05 ( Reloj ).
-        // Consultamos la semana desde el lunes 2026-08-03.
+        // Asignación arranca el miércoles 2026-08-05.
+        // Consultamos desde el miércoles 2026-08-05 (fecha_inicial).
         await SembrarAsync(db);
         db.asignaciones_profesores.First(ap => ap.idAsignacion == 100).fecha_inicial = new DateOnly(2026, 8, 5);
         await db.SaveChangesAsync();
 
-        var r = await Crear(db).ObtenerAsync(Duenio, Lunes, Domingo);
+        var miercoles = new DateOnly(2026, 8, 5);
+        var r = await Crear(db).ObtenerAsync(Duenio, miercoles, Domingo);
 
-        // No debe quedar excluida por el hecho de que inicio (2026-08-03) fue anterior a fecha_inicial (2026-08-05).
-        r.Should().HaveCount(2);
+        // Incluye los bloques a partir de la fecha de inicio de la asignación.
+        r.Should().HaveCount(1);
+        r.Single().Fecha.Should().Be(Lunes.AddDays(4));
+    }
+
+    [TestMethod]
+    public async Task Obtener_SemanaHistoricaConAsignacionVencidaHoyPeroVigenteEntonces_DevuelveBloques()
+    {
+        using var db = CrearContexto(nameof(Obtener_SemanaHistoricaConAsignacionVencidaHoyPeroVigenteEntonces_DevuelveBloques));
+        await SembrarAsync(db);
+
+        // La asignación 100 fue del 2026-06-01 al 2026-07-10 (vencida hace más de 15 días respecto al reloj 2026-08-05).
+        var asig100 = db.asignaciones_profesores.First(ap => ap.idAsignacion == 100);
+        asig100.fecha_inicial = new DateOnly(2026, 6, 1);
+        asig100.fecha_fin = new DateOnly(2026, 7, 10);
+
+        // Agregamos fecha y horario en semana histórica del 2026-06-29 al 2026-07-05 (vigente en ese rango).
+        var lunesHistorico = new DateOnly(2026, 6, 29);
+        var domingoHistorico = new DateOnly(2026, 7, 5);
+        db.fechas_horarios.Add(new fechas_horarios { idFecha = 600, fecha = lunesHistorico, dia = "Lunes" });
+        db.horario_detalle.Add(new HorarioDetalleBuilder().ConId(10).DeAsignacion(100).EnFecha(600).EnFranja(901).Build());
+        await db.SaveChangesAsync();
+
+        var r = await Crear(db).ObtenerAsync(Duenio, lunesHistorico, domingoHistorico);
+
+        r.Should().HaveCount(1);
+        r.Single().Fecha.Should().Be(lunesHistorico);
     }
 
     [TestMethod]

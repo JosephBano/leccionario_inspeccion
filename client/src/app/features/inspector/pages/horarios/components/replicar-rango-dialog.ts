@@ -82,7 +82,7 @@ const DIAS_SEMANA = [
           <div class="field-row">
             <mat-form-field appearance="outline">
               <mat-label>Asignatura</mat-label>
-              <mat-select [(ngModel)]="idAsignacion">
+              <mat-select [(ngModel)]="idAsignacion" (selectionChange)="onAsignacionChange()">
                 @for (a of data.asignaciones; track a.idAsignacion) {
                   <mat-option [value]="a.idAsignacion">
                     {{ a.asignatura }} ({{ a.nombreDocente || 'Sin docente' }})
@@ -103,15 +103,56 @@ const DIAS_SEMANA = [
             </mat-form-field>
           </div>
 
+          @if (asignacionSeleccionada) {
+            <div class="range-info-card">
+              <div class="info-content">
+                <mat-icon color="primary" class="info-icon">event_available</mat-icon>
+                <div class="info-text">
+                  <span class="info-label">Vigencia oficial de la asignatura:</span>
+                  @if (asignacionSeleccionada.fechaInicial && asignacionSeleccionada.fechaFin) {
+                    <span class="info-dates">
+                      <strong>{{ formatearFechaDisplay(asignacionSeleccionada.fechaInicial) }}</strong>
+                      al
+                      <strong>{{ formatearFechaDisplay(asignacionSeleccionada.fechaFin) }}</strong>
+                    </span>
+                  } @else {
+                    <span class="info-dates text-muted">Sin rango de fechas límite registrado</span>
+                  }
+                </div>
+              </div>
+
+              @if (asignacionSeleccionada.fechaInicial && asignacionSeleccionada.fechaFin && (desde < asignacionSeleccionada.fechaInicial || hasta > asignacionSeleccionada.fechaFin)) {
+                <button type="button" class="btn-adjust" (click)="autoAjustarFechas()" title="Ajustar fechas al rango válido de la materia">
+                  <mat-icon>auto_fix_high</mat-icon>
+                  Ajustar fechas al módulo
+                </button>
+              }
+            </div>
+          }
+
           <div class="field-row">
             <mat-form-field appearance="outline">
               <mat-label>Fecha Desde</mat-label>
-              <input matInput type="date" [(ngModel)]="desde" (change)="validarFechas()" />
+              <input
+                matInput
+                type="date"
+                [(ngModel)]="desde"
+                [min]="asignacionSeleccionada?.fechaInicial ?? null"
+                [max]="asignacionSeleccionada?.fechaFin ?? null"
+                (change)="validarFechas()"
+              />
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>Fecha Hasta</mat-label>
-              <input matInput type="date" [(ngModel)]="hasta" (change)="validarFechas()" />
+              <input
+                matInput
+                type="date"
+                [(ngModel)]="hasta"
+                [min]="asignacionSeleccionada?.fechaInicial ?? null"
+                [max]="asignacionSeleccionada?.fechaFin ?? null"
+                (change)="validarFechas()"
+              />
             </mat-form-field>
           </div>
 
@@ -215,6 +256,71 @@ const DIAS_SEMANA = [
       gap: 12px;
     }
     mat-form-field { width: 100%; }
+
+    .range-info-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      background-color: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      margin-bottom: 4px;
+    }
+    .info-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .info-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: #2563eb;
+    }
+    .info-text {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.85rem;
+    }
+    .info-label {
+      color: #475569;
+      font-size: 0.78rem;
+    }
+    .info-dates {
+      color: #1e3a8a;
+      font-size: 0.88rem;
+    }
+    .text-muted {
+      color: #64748b;
+      font-style: italic;
+    }
+    .btn-adjust {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #1d4ed8;
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease-in-out;
+    }
+    .btn-adjust:hover {
+      background: #bfdbfe;
+      color: #1e40af;
+    }
+    .btn-adjust mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
     .alert {
       display: flex;
       align-items: center;
@@ -257,6 +363,32 @@ export class ReplicarRangoDialogComponent {
   protected readonly errorLocal = signal<string | null>(null);
   protected readonly resultado = signal<ResultadoRangoDto | null>(null);
 
+  protected get asignacionSeleccionada(): AsignacionParaleloDto | undefined {
+    return this.data.asignaciones.find((a) => a.idAsignacion === Number(this.idAsignacion));
+  }
+
+  protected formatearFechaDisplay(fechaIso: string | null | undefined): string {
+    if (!fechaIso) return '';
+    const partes = fechaIso.split('-');
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return fechaIso;
+  }
+
+  protected onAsignacionChange(): void {
+    this.validarFechas();
+  }
+
+  protected autoAjustarFechas(): void {
+    const asig = this.asignacionSeleccionada;
+    if (asig?.fechaInicial && asig?.fechaFin) {
+      this.desde = asig.fechaInicial;
+      this.hasta = asig.fechaFin;
+      this.validarFechas();
+    }
+  }
+
   protected obtenerMensaje(codigo: string): string {
     return obtenerMensajeError(codigo);
   }
@@ -269,9 +401,26 @@ export class ReplicarRangoDialogComponent {
     const check = this.horariosService.validarTopeRango(this.desde, this.hasta);
     if (!check.valido) {
       this.errorLocal.set(check.error ?? 'Rango inválido');
-    } else {
-      this.errorLocal.set(null);
+      return;
     }
+
+    const asig = this.asignacionSeleccionada;
+    if (asig) {
+      if (asig.fechaInicial && this.desde < asig.fechaInicial) {
+        this.errorLocal.set(
+          `La Fecha Desde (${this.formatearFechaDisplay(this.desde)}) es anterior al inicio de la asignatura (${this.formatearFechaDisplay(asig.fechaInicial)}).`
+        );
+        return;
+      }
+      if (asig.fechaFin && this.hasta > asig.fechaFin) {
+        this.errorLocal.set(
+          `La Fecha Hasta (${this.formatearFechaDisplay(this.hasta)}) sobrepasa el fin de la asignatura (${this.formatearFechaDisplay(asig.fechaFin)}).`
+        );
+        return;
+      }
+    }
+
+    this.errorLocal.set(null);
   }
 
   protected formularioValido(): boolean {

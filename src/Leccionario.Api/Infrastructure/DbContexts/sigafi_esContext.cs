@@ -326,13 +326,18 @@ public partial class sigafi_esContext : DbContext
                 .HasCharSet("utf8mb4")
                 .UseCollation("utf8mb4_unicode_ci");
 
+            entity.Ignore(e => e.idHorarioInicio);
+            entity.Ignore(e => e.franjasPlanificadas);
+            entity.Ignore(e => e.minutosPlanificados);
+            entity.Ignore(e => e.esTardia);
+            entity.Ignore(e => e.diasRetraso);
+            entity.Ignore(e => e.idHorarioInicioNavigation);
+
             entity.HasIndex(e => new { e.idAsignacion, e.activo }, "ix_cplec_sesiones_asignacion");
 
             entity.HasIndex(e => new { e.estado, e.idFecha }, "ix_cplec_sesiones_estado_fecha");
 
             entity.HasIndex(e => e.idFecha, "ix_cplec_sesiones_fecha");
-
-            entity.HasIndex(e => new { e.esTardia, e.idFecha }, "ix_cplec_sesiones_tardias");
 
             entity.HasIndex(e => new { e.idAsignacion, e.idFecha, e.numeroBloque }, "uq_cplec_sesiones_asignacion_fecha_bloque").IsUnique();
 
@@ -340,12 +345,6 @@ public partial class sigafi_esContext : DbContext
             entity.Property(e => e.activo)
                 .IsRequired()
                 .HasDefaultValueSql("'1'");
-            entity.Property(e => e.diasRetraso)
-                .HasComment("Dias entre la clase y el primer guardado. Congelado al crear.")
-                .HasColumnType("smallint(6)");
-            entity.Property(e => e.esTardia)
-                .HasComment("Se registro despues del dia de clase. Congelado al crear.")
-                .HasColumnType("tinyint(1)");
             entity.Property(e => e.estado)
                 .HasDefaultValueSql("'borrador'")
                 .HasComment("cerrada = congelada; solo un inspector puede reabrirla")
@@ -357,21 +356,12 @@ public partial class sigafi_esContext : DbContext
             entity.Property(e => e.fechaCreacion)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
-            entity.Property(e => e.franjasPlanificadas)
-                .HasComment("Cuantas franjas cubre el bloque")
-                .HasColumnType("tinyint(4)");
             entity.Property(e => e.idAsignacion)
                 .HasComment("FK asignaciones_profesores.idAsignacion (columna UNIQUE, no la PK compuesta)")
                 .HasColumnType("int(11)");
             entity.Property(e => e.idFecha)
                 .HasComment("FK fechas_horarios.idFecha — el dia de la clase")
                 .HasColumnType("int(11)");
-            entity.Property(e => e.idHorarioInicio)
-                .HasComment("FK horario_detalle.idHorario — identidad estable del bloque contiguo")
-                .HasColumnType("int(11)");
-            entity.Property(e => e.minutosPlanificados)
-                .HasComment("Suma de horas_clases.minutos del bloque")
-                .HasColumnType("smallint(6)");
             entity.Property(e => e.numeroBloque)
                 .HasDefaultValueSql("'1'")
                 .HasComment("Orden de la clase dentro del dia. Normalmente 1.")
@@ -397,10 +387,6 @@ public partial class sigafi_esContext : DbContext
                 .HasForeignKey(d => d.idFecha)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_cplec_sesiones_fecha");
-
-            entity.HasOne(d => d.idHorarioInicioNavigation).WithMany()
-                .HasForeignKey(d => d.idHorarioInicio)
-                .HasConstraintName("fk_cplec_sesiones_horario");
         });
 
         modelBuilder.Entity<cursos>(entity =>
@@ -431,7 +417,7 @@ public partial class sigafi_esContext : DbContext
 
             entity.Property(e => e.idEspacio).HasColumnType("int(11)");
             entity.Property(e => e.activo).HasColumnType("tinyint(4)");
-            entity.Property(e => e.espacio).HasMaxLength(100);
+            entity.Property(e => e.espacio).HasColumnName("nombre").HasMaxLength(100);
         });
 
         modelBuilder.Entity<fechas_horarios>(entity =>
@@ -468,6 +454,18 @@ public partial class sigafi_esContext : DbContext
             entity.HasOne(d => d.idEspacioNavigation).WithMany(p => p.horario_detalle)
                 .HasForeignKey(d => d.idEspacio)
                 .HasConstraintName("fk_horario_detalle_espacios1");
+
+            // FK horario_detalle.idhora -> horas_clases.idhora.
+            // DECLARADA EXPLÍCITAMENTE: si se deja a la convención, EF Core 8 crea
+            // una shadow property "horas_clasesidhora" que NO existe en MySQL
+            // (la columna real es idhora) y todo SELECT contra horario_detalle
+            // revienta con "Unknown column 'h.horas_clasesidhora' in 'field list'".
+            // La nav de colección vive en horas_clases.horario_detalle; acá solo
+            // declaramos el lado dependiente. Ver DbContextSmokeTests.
+            entity.HasOne<horas_clases>()
+                .WithMany(h => h.horario_detalle)
+                .HasForeignKey(d => d.idhora)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<horas_clases>(entity =>

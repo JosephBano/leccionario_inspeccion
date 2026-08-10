@@ -81,7 +81,7 @@ El estado y la secuencia de entrega están en [`docs/00-roadmap.md`](docs/00-roa
 ```bash
 # 1. Clonar y situarse en la rama personal
 git clone <url> && cd leccionario_inspeccion
-git checkout dv_jb
+git checkout dev_jb
 
 # 2. Activar los hooks de protección (OBLIGATORIO, una sola vez por clon)
 ./scripts/setup-hooks.sh

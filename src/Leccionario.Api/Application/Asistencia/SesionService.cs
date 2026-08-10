@@ -304,6 +304,32 @@ public sealed class SesionService : ISesionService
             })
             .ToListAsync(ct);
 
+        var tieneHorario = await _db.horario_detalle
+            .AsNoTracking()
+            .AnyAsync(h => h.idAsignacion == s.idAsignacion && h.idFecha == s.idFecha && h.activo == 1, ct);
+
+        sbyte? franjas = s.franjasPlanificadas;
+        short? minutos = s.minutosPlanificados;
+
+        if ((!franjas.HasValue || !minutos.HasValue) && tieneHorario)
+        {
+            var franjasHorario = await (from hd in _db.horario_detalle.AsNoTracking()
+                                        join hc in _db.horas_clases.AsNoTracking() on hd.idhora equals hc.idhora
+                                        where hd.idAsignacion == s.idAsignacion && hd.idFecha == s.idFecha && hd.activo == 1
+                                        select hc.minutos)
+                                        .ToListAsync(ct);
+
+            if (franjasHorario.Count > 0)
+            {
+                franjas ??= (sbyte)franjasHorario.Count;
+                minutos ??= (short)franjasHorario.Sum(m => m ?? 0);
+            }
+        }
+
+        var diasRetraso = s._diasRetraso ?? (fecha.HasValue
+            ? Math.Max(0, DateOnly.FromDateTime(s.fechaCreacion).DayNumber - fecha.Value.DayNumber)
+            : 0);
+
         return new SesionDto
         {
             IdSesion = s.idSesion,
@@ -314,11 +340,11 @@ public sealed class SesionService : ISesionService
             Observacion = s.observacion,
             Estado = s.estado,
             FechaCierre = s.fechaCierre,
-            Origen = s.idHorarioInicio.HasValue ? "horario" : "libre",
-            EsTardia = s.esTardia,
-            DiasRetraso = s.diasRetraso,
-            FranjasPlanificadas = s.franjasPlanificadas,
-            MinutosPlanificados = s.minutosPlanificados,
+            Origen = (s.idHorarioInicio.HasValue || tieneHorario) ? "horario" : "libre",
+            EsTardia = s._esTardia ?? (diasRetraso > 0),
+            DiasRetraso = diasRetraso,
+            FranjasPlanificadas = franjas,
+            MinutosPlanificados = minutos,
             Asistencias = marcas
         };
     }

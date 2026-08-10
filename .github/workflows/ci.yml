@@ -156,7 +156,10 @@ jobs:
       - name: Buscar credenciales en archivos versionados
         run: |
           fallo=0
-          archivos=$(git ls-files | grep -vE '(example|\.md$|^docs/|^\.github/)' || true)
+          # `.githooks/` se excluye igual que `.github/`: el pre-commit lleva el
+          # mismo patrón de detección escrito como literal y se delataba a sí
+          # mismo (falso positivo que dejaba el job en rojo permanente).
+          archivos=$(git ls-files | grep -vE '(example|\.md$|^docs/|^\.github/|^\.githooks/)' || true)
           for f in $archivos; do
             [ -f "$f" ] || continue
             if grep -qEi 'Server=[^;"]*;.*Password=[^;"[:space:]]+' "$f"; then

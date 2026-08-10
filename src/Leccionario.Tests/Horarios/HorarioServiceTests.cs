@@ -27,7 +27,7 @@ public sealed class HorarioServiceTests
 
     private static IHorarioService Crear(sigafi_esContext db) =>
         new HorarioService(db,
-            new HorarioCarreraGuard(db), new FranjaZGuard(db),
+            new HorarioCarreraGuard(db), new FranjaZGuard(db), new LunesGuard(),
             new ConflictoHorarioService(db), new FranjaService(db, new FranjaZGuard(db)),
             new EscrituraDirecta(), new DistributivoGuard(db));
 
@@ -140,6 +140,27 @@ public sealed class HorarioServiceTests
         var acto = async () => await Crear(db).ObtenerGridAsync(Clave, Lunes, idProfesorDocente: null, esInspector: false);
 
         await acto.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [TestMethod]
+    public async Task Grid_FechaQueNoEsLunes_RechazaConValidacion_AntesDeTocarLaBD()
+    {
+        // Caso del bug 2026-08-08: el frontend mandaba 2026-07-07 (martes) como si fuera
+        // lunes. La defensa aguas arriba (ADR-009) corta ANTES de consultar distributivo:
+        // sembramos un docente que NO es dueño del paralelo, así que si el guard corriera
+        // aguas abajo de distributivo, este test fallaría con DistributivoAjenoException
+        // en vez de ValidacionException.
+        using var db = CrearContexto(nameof(Grid_FechaQueNoEsLunes_RechazaConValidacion_AntesDeTocarLaBD));
+        await SembrarAsync(db);
+
+        var martes = new DateOnly(2026, 7, 7);   // martes: el caso del bug
+        const string profesorAjeno = "9999999999";
+
+        var acto = async () => await ObtenerGridComoDocenteAsync(db, Clave, martes, idProfesor: profesorAjeno);
+
+        await acto.Should().ThrowAsync<ValidacionException>()
+            .Where(e => e.Codigo == "VALIDACION")
+            .WithMessage("*2026-07-07*");
     }
 
     [TestMethod]

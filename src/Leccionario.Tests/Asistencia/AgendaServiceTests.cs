@@ -194,10 +194,11 @@ public sealed class AgendaServiceTests
         using var db = CrearContexto(nameof(SesionesTardias_DevuelveSoloLasMarcadas_OrdenadasPorRetraso));
         await SembrarHorarioAsync(db);
         var puntual = Sesion(1, 500, 1, "cerrada");
+        puntual.fechaCreacion = El(3).UtcDateTime; puntual._esTardia = false; puntual._diasRetraso = 0;
         var tardia2 = Sesion(2, 507, 1, "cerrada");
-        tardia2.esTardia = true; tardia2.diasRetraso = 2;
+        tardia2.fechaCreacion = El(12).UtcDateTime; tardia2._esTardia = true; tardia2._diasRetraso = 2;
         var tardia9 = Sesion(3, 507, 2, "cerrada");
-        tardia9.esTardia = true; tardia9.diasRetraso = 9;
+        tardia9.fechaCreacion = El(19).UtcDateTime; tardia9._esTardia = true; tardia9._diasRetraso = 9;
         db.cplec_sesiones.AddRange(puntual, tardia2, tardia9);
         await db.SaveChangesAsync();
 

@@ -88,6 +88,7 @@ public static class DependencyInjectionExtensions
         services.AddScoped<IAsistenciaService, AsistenciaService>();
         services.AddScoped<IHorarioCarreraGuard, HorarioCarreraGuard>();
         services.AddScoped<IFranjaZGuard, FranjaZGuard>();
+        services.AddScoped<ILunesGuard, LunesGuard>();
         services.AddScoped<IFranjaService, FranjaService>();
         services.AddScoped<IConflictoHorarioService, ConflictoHorarioService>();
         services.AddScoped<IEscrituraSerializable, EscrituraSerializable>();

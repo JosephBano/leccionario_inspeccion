@@ -83,4 +83,64 @@ public sealed class DbContextSmokeTests
             "idHorario", "idAsignacion", "idFecha", "idhora", "idEspacio", "tipoBloque", "activo"
         });
     }
+
+    /// <summary>
+    /// <c>horario_detalle.idhora</c> es la FK real hacia <c>horas_clases.idhora</c>
+    /// (verificado contra <c>sigafi_es</c>: <c>KEY fk_horario_detalle_horas_clases1_idx (idhora)</c>).
+    /// Sin esta declaración explícita, EF Core 8 descubre la relación por convención
+    /// (vía la nav de colección <c>horas_clases.horario_detalle</c>) y crea una
+    /// shadow property <c>horas_clasesidhora</c> que NO existe en la tabla, reventando
+    /// cualquier <c>SELECT</c> contra MySQL con
+    /// <c>Unknown column 'h.horas_clasesidhora' in 'field list'</c>.
+    /// Ver <see cref="HorarioService"/> (replicar / editar celda) y
+    /// <see cref="ConflictoHorarioService"/>.
+    /// </summary>
+    [TestMethod]
+    public void HorarioDetalle_FkAHorasClases_EstaDeclaradaEnIdhora()
+    {
+        var options = new DbContextOptionsBuilder<sigafi_esContext>()
+            .UseInMemoryDatabase(databaseName: nameof(HorarioDetalle_FkAHorasClases_EstaDeclaradaEnIdhora))
+            .Options;
+        using var db = new sigafi_esContext(options);
+
+        var entityType = db.Model.FindEntityType(typeof(horario_detalle))!;
+        var fkHorasClases = entityType.GetForeignKeys()
+            .SingleOrDefault(fk => fk.PrincipalEntityType.ClrType == typeof(horas_clases));
+
+        fkHorasClases.Should().NotBeNull(
+            "horario_detalle debe tener una FK declarada hacia horas_clases; " +
+            "sin esta declaración, EF Core 8 crea una shadow property inexistente en MySQL");
+
+        fkHorasClases!.Properties
+            .Select(p => p.Name)
+            .Should()
+            .BeEquivalentTo(new[] { "idhora" },
+                "la FK debe usar la columna real idhora; " +
+                "el nombre 'horas_clasesidhora' lo genera la convención y NO existe en la tabla");
+    }
+
+    /// <summary>
+    /// Verifica que <c>horario_detalle</c> NO tiene shadow properties generadas por
+    /// convención. Si aparece alguna, su columna no existe en MySQL y la consulta falla.
+    /// Esta es la red de seguridad que el scaffold original no tenía: el smoke test
+    /// <c>DbContext_ConstruyeModeloSinErrores</c> acepta shadow properties sin quejarse.
+    /// </summary>
+    [TestMethod]
+    public void HorarioDetalle_NoTieneShadowProperties()
+    {
+        var options = new DbContextOptionsBuilder<sigafi_esContext>()
+            .UseInMemoryDatabase(databaseName: nameof(HorarioDetalle_NoTieneShadowProperties))
+            .Options;
+        using var db = new sigafi_esContext(options);
+
+        var entityType = db.Model.FindEntityType(typeof(horario_detalle))!;
+        var shadowProps = entityType.GetProperties()
+            .Where(p => p.IsShadowProperty())
+            .Select(p => p.Name)
+            .ToArray();
+
+        shadowProps.Should().BeEmpty(
+            "horario_detalle no debe tener shadow properties: cada columna debe corresponder " +
+            "a una propiedad real de la entidad. Shadow property típica detectada: 'horas_clasesidhora'.");
+    }
 }

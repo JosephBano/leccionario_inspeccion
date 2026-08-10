@@ -14,14 +14,7 @@ import {
   obtenerMensajeError,
 } from '../../models/horario.model';
 import type { ParaleloClave, ParaleloOpcion } from '@shared/paralelo-selector/paralelo-selector';
-
-export function getMondayOf(d: Date): string {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday (0)
-  date.setDate(diff);
-  return date.toISOString().split('T')[0];
-}
+import { lunesDe, sumarDiasISO } from '@core/utils/fechas';
 
 @Injectable()
 export class HorariosStore {
@@ -29,7 +22,7 @@ export class HorariosStore {
 
   // Private writable signals
   private readonly _clave = signal<ParaleloClave | null>(null);
-  private readonly _lunes = signal<string>(getMondayOf(new Date()));
+  private readonly _lunes = signal<string>(lunesDe(new Date()));
   private readonly _grid = signal<GridDto | null>(null);
   private readonly _periodos = signal<PeriodoDto[]>([]);
   private readonly _paralelos = signal<ParaleloOpcion[]>([]);
@@ -89,18 +82,18 @@ export class HorariosStore {
       this._clave.set(claveFromParams);
     }
 
-    this.cargarPeriodos(true);
-    this.cargarParalelos(queryParams.idPeriodo, true);
+    this.cargarPeriodos(false);
+    this.cargarParalelos(queryParams.idPeriodo, false);
   }
 
-  cargarPeriodos(soloVigentes: boolean = true): void {
+  cargarPeriodos(soloVigentes: boolean = false): void {
     this.horariosService.obtenerPeriodos(soloVigentes).subscribe({
       next: (data) => this._periodos.set(data),
       error: () => this._periodos.set([]),
     });
   }
 
-  cargarParalelos(idPeriodo?: string, soloVigentes: boolean = true): void {
+  cargarParalelos(idPeriodo?: string, soloVigentes: boolean = false): void {
     this._cargando.set(true);
     this.horariosService.obtenerParalelosInspector(idPeriodo, soloVigentes).subscribe({
       next: (data) => {
@@ -149,10 +142,7 @@ export class HorariosStore {
   }
 
   cambiarSemana(deltaSemanas: number): void {
-    const cur = new Date(this._lunes());
-    cur.setDate(cur.getDate() + deltaSemanas * 7);
-    const newLunes = getMondayOf(cur);
-    this._lunes.set(newLunes);
+    this._lunes.set(sumarDiasISO(this._lunes(), deltaSemanas * 7));
     this.cerrarPanel();
     if (this._clave()) {
       this.cargarGrid();
