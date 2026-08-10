@@ -49,13 +49,17 @@ public sealed class EscrituraSerializable : IEscrituraSerializable
         return PoliticaReintento.EjecutarAsync(
             async (_, token) =>
             {
-                await using var tx = await _db.Database
-                    .BeginTransactionAsync(IsolationLevel.Serializable, token);
+                var strategy = _db.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _db.Database
+                        .BeginTransactionAsync(IsolationLevel.Serializable, token);
 
-                var resultado = await operacion(token);
+                    var resultado = await operacion(token);
 
-                await tx.CommitAsync(token);
-                return resultado;
+                    await tx.CommitAsync(token);
+                    return resultado;
+                });
             },
             EsTransitorio,
             ct: ct);
