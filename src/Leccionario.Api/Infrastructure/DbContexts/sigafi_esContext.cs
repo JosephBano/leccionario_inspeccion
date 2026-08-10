@@ -417,7 +417,7 @@ public partial class sigafi_esContext : DbContext
 
             entity.Property(e => e.idEspacio).HasColumnType("int(11)");
             entity.Property(e => e.activo).HasColumnType("tinyint(4)");
-            entity.Property(e => e.espacio).HasMaxLength(100);
+            entity.Property(e => e.espacio).HasColumnName("nombre").HasMaxLength(100);
         });
 
         modelBuilder.Entity<fechas_horarios>(entity =>
@@ -454,6 +454,18 @@ public partial class sigafi_esContext : DbContext
             entity.HasOne(d => d.idEspacioNavigation).WithMany(p => p.horario_detalle)
                 .HasForeignKey(d => d.idEspacio)
                 .HasConstraintName("fk_horario_detalle_espacios1");
+
+            // FK horario_detalle.idhora -> horas_clases.idhora.
+            // DECLARADA EXPLÍCITAMENTE: si se deja a la convención, EF Core 8 crea
+            // una shadow property "horas_clasesidhora" que NO existe en MySQL
+            // (la columna real es idhora) y todo SELECT contra horario_detalle
+            // revienta con "Unknown column 'h.horas_clasesidhora' in 'field list'".
+            // La nav de colección vive en horas_clases.horario_detalle; acá solo
+            // declaramos el lado dependiente. Ver DbContextSmokeTests.
+            entity.HasOne<horas_clases>()
+                .WithMany(h => h.horario_detalle)
+                .HasForeignKey(d => d.idhora)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<horas_clases>(entity =>
